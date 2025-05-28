@@ -165,12 +165,163 @@ public:
         model = "Z";
     }
 
-    string getType() override { return "Zener Duiode"; }
+    string getType() override { return "Zener Diode"; }
 
     double calculateCurrent(double voltage) override {
 
     }
 };
+
+class VoltageSource : public Element {
+public:
+    VoltageSource(string name_, double value_, Node *n1, Node *n2)
+            : Element(name_, value_, n1, n2) {}
+
+    virtual double getVoltage(double time) = 0;
+
+    string getType() override { return "Voltage Source"; }
+};
+
+class DCVoltageSource : public VoltageSource {
+public:
+    DCVoltageSource(string name_, double value_, Node *n1, Node *n2)
+            : VoltageSource(name_, value_, n1, n2) {}
+
+    double getVoltage(double time) override {
+        return getValue();
+    }
+
+    string getType() override { return "DC Voltage Source"; }
+};
+
+class SinusoidalVoltageSource : public VoltageSource {
+private:
+    double frequency;
+    double offset;
+
+public:
+    SinusoidalVoltageSource(string name_, double amplitude, double frequency_, double offset_, Node *n1, Node *n2)
+            : VoltageSource(name_, amplitude, n1, n2), frequency(frequency_), offset(offset_) {}
+
+    double getVoltage(double time) override {
+        return getValue() * sin(2 * M_PI * frequency * time) + offset;
+    }
+
+    string getType() override { return "Sinusoidal Voltage Source"; }
+};
+
+class PulseVoltageSource : public VoltageSource {
+private:
+    double V1;
+    double V2;
+    double TD;
+    double TR;
+    double TF;
+    double TOn;
+    double period;
+
+public:
+    PulseVoltageSource(string name_, double V1_, double V2_, double TD_, double TR_, double TF_, double TOn_, double period_, Node *n1, Node *n2)
+            : VoltageSource(name_, V1_, n1, n2), V1(V1_), V2(V2_), TD(TD_), TR(TR_), TF(TF_), TOn(TOn_), period(period_) {}
+
+    double getVoltage(double time) override {
+        double t = fmod(time, period);
+
+        if (t < TD) {
+            return V1;
+        }
+        else if (t < TD + TR) {
+            return V1 + (V2 - V1) * (t - TD) / TR;
+        }
+        else if (t < TD + TR + TOn) {
+            return V2;
+        }
+        else if (t < TD + TR + TOn + TF) {
+            return V2 - (V2 - V1) * (t - TD - TOn - TR) / TF;
+        }
+        else {
+            return V1;
+        }
+    }
+
+    string getType() override { return "Pulse Voltage Source"; }
+};
+
+class CurrentSource : public Element {
+public:
+    CurrentSource(string name_, double value_, Node *n1, Node *n2)
+            : Element(name_, value_, n1, n2) {}
+
+    virtual double getCurrent(double time) = 0;
+
+    string getType() override { return "Current Source"; }
+};
+
+class DCCurrentSource : public CurrentSource {
+public:
+    DCCurrentSource(string name_, double value_, Node *n1, Node *n2)
+            : CurrentSource(name_, value_, n1, n2) {}
+
+    double getCurrent(double time) override {
+        return getValue();
+    }
+
+    string getType() override { return "DC Current Source"; }
+};
+
+class SinusoidalCurrentSource : public CurrentSource {
+private:
+    double frequency;
+    double offset;
+
+public:
+    SinusoidalCurrentSource(string name_, double amplitude, double frequency_, double offset_, Node *n1, Node *n2)
+            : CurrentSource(name_, amplitude, n1, n2), frequency(frequency_), offset(offset_) {}
+
+    double getCurrent(double time) override {
+        return getValue() * sin(2 * M_PI * frequency * time) + offset;
+    }
+
+    string getType() override { return "Sinusoidal Current Source"; }
+};
+
+class PulseCurrentSource : public CurrentSource {
+private:
+    double I1;
+    double I2;
+    double TD;
+    double TR;
+    double TF;
+    double TOn;
+    double period;
+
+public:
+    PulseCurrentSource(string name_, double I1_, double I2_, double TD_, double TR_, double TF_, double TOn_, double period_, Node *n1, Node *n2)
+            : CurrentSource(name_, I1_, n1, n2), I1(I1_), I2(I2_), TD(TD_), TR(TR_), TF(TF_), TOn(TOn_), period(period_) {}
+
+    double getCurrent(double time) override {
+        double t = fmod(time, period);
+
+        if (t < TD) {
+            return I1;
+        }
+        else if (t < TD + TR) {
+            return I1 + (I2 - I1) * (t - TD) / TR;
+        }
+        else if (t < TD + TR + TOn) {
+            return I2;
+        }
+        else if (t < TD + TR + TOn + TF) {
+            return I2 - (I2 - I1) * (t - TD - TOn - TR) / TF;
+        }
+        else {
+            return I1;
+        }
+    }
+
+    string getType() override { return "Pulse Current Source"; }
+};
+
 
 class Controller {
 public:
@@ -340,6 +491,70 @@ public:
             cout<<"No "<<type<<" exist in the circuit\n";
     }
 
+    string addDCVoltageSource(string name, string node1, string node2, double value, Circuit *circuit){
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        Element *element = nullptr;
+        element = new DCVoltageSource(name, value, n1, n2);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return element->getType() + " added successfully!\n";
+    }
+
+    string addSinusoidalVoltageSource(string name, string node1, string node2, double amplitude,
+                                      double frequency, double offset, Circuit *circuit){
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        Element *element = nullptr;
+        element = new SinusoidalVoltageSource(name, amplitude, frequency, offset, n1, n2);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return element->getType() + " added successfully!\n";
+    }
+
+    string addPulseVoltageSource(string name, string node1, string node2, double V1, double V2, double TD, double TR,
+                                 double TF, double TOn, double period, Circuit* circuit){
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        Element *element = nullptr;
+        element = new PulseVoltageSource(name, V1, V2, TD, TR, TF, TOn, period, n1, n2);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return element->getType() + " added successfully!\n";
+    }
+
+    string addDCCurrentSource(string name, string node1, string node2, double value, Circuit *circuit){
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        Element *element = nullptr;
+        element = new DCCurrentSource(name, value, n1, n2);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return element->getType() + " added successfully!\n";
+    }
+
+    string addSinusoidalCurrentSource(string name, string node1, string node2, double amplitude,
+                                      double frequency, double offset, Circuit *circuit){
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        Element *element = nullptr;
+        element = new SinusoidalCurrentSource(name, amplitude, frequency, offset, n1, n2);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return element->getType() + " added successfully!\n";
+    }
+
+    string addPulseCurrentSource(string name, string node1, string node2, double I1, double I2, double TD, double TR,
+                                 double TF, double TOn, double period, Circuit* circuit){
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        Element *element = nullptr;
+        element = new PulseCurrentSource(name, I1, I2, TD, TR, TF, TOn, period, n1, n2);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return element->getType() + " added successfully!\n";
+    }
+
     void showCircuitDetails(Circuit *circuit) {
         cout << "Circuit Details:\nElements:\n";
         for (auto element: circuit->getElements()) {
@@ -390,6 +605,7 @@ public:
         regex list_element(R"(^\s*.list\s+(\w+)\s*$)");
         regex rename_node(R"(^\s*\.rename\s+node\s+(\S+)\s+(\S+)\s*$)");
         regex new_file(R"(NewFile ([a-zA-Z0-9\\-_\\.:\\/()\\s]+))");
+        regex addVoltageSource(R"(add\s+VoltageSource(\S+)\s+(\S+)\s+(\S+)\s+(-?\d*\.?\d+)\s*)");
         regex exit(R"(^exit$)");
         while (true) {
             getline(cin, input);
@@ -578,6 +794,7 @@ public:
                 cout << "reading file ended :)" << endl;
                 fin.close();
             }
+
 
             else if (regex_match(input, match, exit)) {
                 cout << "Bye Bye!\n";

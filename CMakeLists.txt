@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.30)
-project(OOP2025_project)
+cmake_minimum_required(VERSION 3.29)
+project(OOPProject)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(OOP2025_project main.cpp)
+add_executable(OOPProject main.cpp)

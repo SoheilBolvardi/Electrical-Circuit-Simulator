@@ -1,5 +1,4 @@
 #include <bits/stdc++.h>
-#include <fstream>
 
 using namespace std;
 
@@ -165,171 +164,12 @@ public:
         model = "Z";
     }
 
-    string getType() override { return "Zener Diode"; }
+    string getType() override { return "Zener Duiode"; }
 
     double calculateCurrent(double voltage) override {
 
     }
 };
-
-class VoltageSource : public Element {
-public:
-    VoltageSource(string name_, double value_, Node *n1, Node *n2)
-            : Element(name_, value_, n1, n2) {}
-
-    virtual double getVoltage(double time) = 0;
-
-    string getType() override { return "Voltage Source"; }
-};
-
-class DCVoltageSource : public VoltageSource {
-public:
-    DCVoltageSource(string name_, double value_, Node *n1, Node *n2)
-            : VoltageSource(name_, value_, n1, n2) {}
-
-    double getVoltage(double time) override {
-        return getValue();
-    }
-
-    string getType() override { return "DC Voltage Source"; }
-};
-
-class SinusoidalVoltageSource : public VoltageSource {
-private:
-    double frequency;
-    double offset;
-
-public:
-    SinusoidalVoltageSource(string name_, double amplitude, double frequency_, double offset_, Node *n1, Node *n2)
-            : VoltageSource(name_, amplitude, n1, n2), frequency(frequency_), offset(offset_) {}
-
-    double getVoltage(double time) override {
-        return getValue() * sin(2 * M_PI * frequency * time) + offset;
-    }
-
-    double getFrequency(){return frequency;}
-
-    double getOffset(){return offset;}
-
-    string getType() override { return "Sinusoidal Voltage Source"; }
-};
-
-class PulseVoltageSource : public VoltageSource {
-private:
-    double V1;
-    double V2;
-    double TD;
-    double TR;
-    double TF;
-    double TOn;
-    double period;
-
-public:
-    PulseVoltageSource(string name_, double V1_, double V2_, double TD_, double TR_, double TF_, double TOn_, double period_, Node *n1, Node *n2)
-            : VoltageSource(name_, V1_, n1, n2), V1(V1_), V2(V2_), TD(TD_), TR(TR_), TF(TF_), TOn(TOn_), period(period_) {}
-
-    double getVoltage(double time) override {
-        double t = fmod(time, period);
-
-        if (t < TD) {
-            return V1;
-        }
-        else if (t < TD + TR) {
-            return V1 + (V2 - V1) * (t - TD) / TR;
-        }
-        else if (t < TD + TR + TOn) {
-            return V2;
-        }
-        else if (t < TD + TR + TOn + TF) {
-            return V2 - (V2 - V1) * (t - TD - TOn - TR) / TF;
-        }
-        else {
-            return V1;
-        }
-    }
-
-    string getType() override { return "Pulse Voltage Source"; }
-};
-
-class CurrentSource : public Element {
-public:
-    CurrentSource(string name_, double value_, Node *n1, Node *n2)
-            : Element(name_, value_, n1, n2) {}
-
-    virtual double getCurrent(double time) = 0;
-
-    string getType() override { return "Current Source"; }
-};
-
-class DCCurrentSource : public CurrentSource {
-public:
-    DCCurrentSource(string name_, double value_, Node *n1, Node *n2)
-            : CurrentSource(name_, value_, n1, n2) {}
-
-    double getCurrent(double time) override {
-        return getValue();
-    }
-
-    string getType() override { return "DC Current Source"; }
-};
-
-class SinusoidalCurrentSource : public CurrentSource {
-private:
-    double frequency;
-    double offset;
-
-public:
-    SinusoidalCurrentSource(string name_, double amplitude, double frequency_, double offset_, Node *n1, Node *n2)
-            : CurrentSource(name_, amplitude, n1, n2), frequency(frequency_), offset(offset_) {}
-
-    double getCurrent(double time) override {
-        return getValue() * sin(2 * M_PI * frequency * time) + offset;
-    }
-
-    double getFrequency(){return frequency;}
-
-    double getOffset(){return offset;}
-
-    string getType() override { return "Sinusoidal Current Source"; }
-};
-
-class PulseCurrentSource : public CurrentSource {
-private:
-    double I1;
-    double I2;
-    double TD;
-    double TR;
-    double TF;
-    double TOn;
-    double period;
-
-public:
-    PulseCurrentSource(string name_, double I1_, double I2_, double TD_, double TR_, double TF_, double TOn_, double period_, Node *n1, Node *n2)
-            : CurrentSource(name_, I1_, n1, n2), I1(I1_), I2(I2_), TD(TD_), TR(TR_), TF(TF_), TOn(TOn_), period(period_) {}
-
-    double getCurrent(double time) override {
-        double t = fmod(time, period);
-
-        if (t < TD) {
-            return I1;
-        }
-        else if (t < TD + TR) {
-            return I1 + (I2 - I1) * (t - TD) / TR;
-        }
-        else if (t < TD + TR + TOn) {
-            return I2;
-        }
-        else if (t < TD + TR + TOn + TF) {
-            return I2 - (I2 - I1) * (t - TD - TOn - TR) / TF;
-        }
-        else {
-            return I1;
-        }
-    }
-
-    string getType() override { return "Pulse Current Source"; }
-};
-
 
 class Controller {
 public:
@@ -340,8 +180,7 @@ public:
                 type = "Resistor";
                 break;
             case 'C':
-                if(name.size()==0)
-                    type = "Capacitor";
+                type = "Capacitor";
                 break;
             case 'L':
                 type = "Inductor";
@@ -365,8 +204,6 @@ public:
                         return "Inductor " + name + " already exists in the circuit\n";
                     case 'D':
                         return "Diode" + name + " already exists in the circuit\n";
-                    default:
-                        return "Source already exists in the circuit\n";
                 }
             }
         }
@@ -495,81 +332,11 @@ public:
         int index=0;
         for(auto element: circuit->getElements()){
             if(element->getType()==type) {
-                cout << element->getType() << ": " << element->getName() << ", value: " << element->getValue()<< endl;
+                cout << element->getType() << ": " << element->getName() << ", value: " << element->getValue() << endl;
                 index++;
             }
         }if(!index)
             cout<<"No "<<type<<" exist in the circuit\n";
-    }
-
-    string addDCVoltageSource(string name, string node1, string node2, double value, Circuit *circuit){
-        Node *n1 = circuit->getCreateNode(node1);
-        Node *n2 = circuit->getCreateNode(node2);
-        Element *element = nullptr;
-        element = new DCVoltageSource(name, value, n1, n2);
-        circuit->addElement(element);
-        element->getFirstNode()->addConnectedElement(element);
-        element->getSecondNode()->addConnectedElement(element);
-        return element->getType() + " added successfully!\n";
-    }
-
-    string addSinusoidalVoltageSource(string name, string node1, string node2, double amplitude,
-                                      double frequency, double offset, Circuit *circuit){
-        Node *n1 = circuit->getCreateNode(node1);
-        Node *n2 = circuit->getCreateNode(node2);
-        Element *element = nullptr;
-        element = new SinusoidalVoltageSource(name, amplitude, frequency, offset, n1, n2);
-        circuit->addElement(element);
-        element->getFirstNode()->addConnectedElement(element);
-        element->getSecondNode()->addConnectedElement(element);
-        return element->getType() + " added successfully!\n";
-    }
-
-    string addPulseVoltageSource(string name, string node1, string node2, double V1, double V2, double TD, double TR,
-                                 double TF, double TOn, double period, Circuit* circuit){
-        Node *n1 = circuit->getCreateNode(node1);
-        Node *n2 = circuit->getCreateNode(node2);
-        Element *element = nullptr;
-        element = new PulseVoltageSource(name, V1, V2, TD, TR, TF, TOn, period, n1, n2);
-        circuit->addElement(element);
-        element->getFirstNode()->addConnectedElement(element);
-        element->getSecondNode()->addConnectedElement(element);
-        return element->getType() + " added successfully!\n";
-    }
-
-    string addDCCurrentSource(string name, string node1, string node2, double value, Circuit *circuit){
-        Node *n1 = circuit->getCreateNode(node1);
-        Node *n2 = circuit->getCreateNode(node2);
-        Element *element = nullptr;
-        element = new DCCurrentSource(name, value, n1, n2);
-        circuit->addElement(element);
-        element->getFirstNode()->addConnectedElement(element);
-        element->getSecondNode()->addConnectedElement(element);
-        return element->getType() + " added successfully!\n";
-    }
-
-    string addSinusoidalCurrentSource(string name, string node1, string node2, double amplitude,
-                                      double frequency, double offset, Circuit *circuit){
-        Node *n1 = circuit->getCreateNode(node1);
-        Node *n2 = circuit->getCreateNode(node2);
-        Element *element = nullptr;
-        element = new SinusoidalCurrentSource(name, amplitude, frequency, offset, n1, n2);
-        circuit->addElement(element);
-        element->getFirstNode()->addConnectedElement(element);
-        element->getSecondNode()->addConnectedElement(element);
-        return element->getType() + " added successfully!\n";
-    }
-
-    string addPulseCurrentSource(string name, string node1, string node2, double I1, double I2, double TD, double TR,
-                                 double TF, double TOn, double period, Circuit* circuit){
-        Node *n1 = circuit->getCreateNode(node1);
-        Node *n2 = circuit->getCreateNode(node2);
-        Element *element = nullptr;
-        element = new PulseCurrentSource(name, I1, I2, TD, TR, TF, TOn, period, n1, n2);
-        circuit->addElement(element);
-        element->getFirstNode()->addConnectedElement(element);
-        element->getSecondNode()->addConnectedElement(element);
-        return element->getType() + " added successfully!\n";
     }
 
     void showCircuitDetails(Circuit *circuit) {
@@ -597,9 +364,6 @@ public:
             cout<<"No ground is specified for this circuit\n";
     }
 
-
-
-
 };
 
 class View {
@@ -621,199 +385,10 @@ public:
         regex list(R"(^\s*.list\s*$)");
         regex list_element(R"(^\s*.list\s+(\w+)\s*$)");
         regex rename_node(R"(^\s*\.rename\s+node\s+(\S+)\s+(\S+)\s*$)");
-        regex new_file(R"(NewFile ([a-zA-Z0-9\\-_\\.:\\/()\\s]+))");
-        regex addDCSource(R"(add\s+(VoltageSource|CurrentSource)(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
-        regex addSINSource(R"(^\s*add\s+([A-Za-z])(\w+)\s+(\S+)\s+(\S+)\s+SIN\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
-        regex addPULSESource(R"(^\s*add\s+([A-Za-z])(\w+)\s+(\S+)\s+(\S+)\s+PULSE\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
         regex exit(R"(^exit$)");
         while (true) {
             getline(cin, input);
-            if (regex_match(input, match, addDCSource)) {
-                string name = match[2].str();
-                string node1 = match[3].str();
-                string node2 = match[4].str();
-                string number = match[5].str();
-                string unit = match[6].str();
-                double value;
-                try {
-                    value = stod(number);
-                } catch (const invalid_argument &e) {
-                    cout << "Error: Invalid numeric value\n";
-                    continue;
-                }
-                string error = controller.handleError(name, circuit, value);
-                if (error != "") {
-                    cout << error;
-                    continue;
-                }
-                if (!unit.empty()) {
-                    switch (unit[0]) {
-                        case 'G':
-                            value *= 1e9;
-                            break;
-                        case 'M':
-                            value *= 1e6;
-                            break;
-                        case 'k':
-                        case 'K':
-                            value *= 1e3;
-                            break;
-                        case 'm':
-                            value *= 1e-3;
-                            break;
-                        case 'u':
-                            value *= 1e-6;
-                            break;
-                        case 'n':
-                            value *= 1e-9;
-                            break;
-                    }
-                }
-                if(match[1]=="VoltageSource")
-                    cout << controller.addDCVoltageSource(name, node1, node2, value, circuit);
-                else
-                    cout << controller.addDCCurrentSource(name, node1, node2, value, circuit);
-            }else if (regex_match(input, match, addSINSource)) {
-                if (match[1] != "V" && match[1] != "I") {
-                    cout << "Element " << match[1] << " not found in library\n";
-                    continue;
-                }
-                string name = match[1].str() + match[2].str();
-                string node1 = match[3].str();
-                string node2 = match[4].str();
-                string number[3] = {match[5].str(),match[7].str(),match[9].str()};
-                string unit[3] = {match[6].str(), match[8].str(), match[10].str()};
-                double value[3];
-                int check=0;
-                for(int i=0; i<3; i++){
-                    try {
-                        value[i] = stod(number[i]);
-                    } catch (const invalid_argument &e) {
-                        cout<<value[i]<<endl;
-                        cout << "Error: Invalid numeric value\n";
-                        check=1;
-                        break;
-                    }
-                }
-                if(check)
-                    continue;
-                check=0;
-                for(int i=0; i<3; i++){
-                    string error = controller.handleError(name, circuit, value[i]);
-                    if (error != "") {
-                        cout << error;
-                        check=1;
-                        break;
-                    }
-                }if(check)
-                    continue;
-                for(int i=0; i<3; i++){
-                    if (!unit[i].empty()) {
-                        switch (unit[i][0]) {
-                            case 'G':
-                                value[i] *= 1e9;
-                                break;
-                            case 'M':
-                                value[i] *= 1e6;
-                                break;
-                            case 'k':
-                            case 'K':
-                                value[i] *= 1e3;
-                                break;
-                            case 'm':
-                                value[i] *= 1e-3;
-                                break;
-                            case 'u':
-                                value[i] *= 1e-6;
-                                break;
-                            case 'n':
-                                value[i] *= 1e-9;
-                                break;
-                        }
-                    }
-                }
-                if(value[2]<=0){
-                    cout<<"Frequency can not be Zero or Negative!\n";
-                    continue;
-                }
-                if(match[1]=="V")
-                    cout << controller.addSinusoidalVoltageSource(name, node1, node2, value[1], value[2], value[0], circuit);
-                else
-                    cout << controller.addSinusoidalCurrentSource(name, node1, node2, value[1], value[2], value[0], circuit);
-            }else if (regex_match(input, match, addPULSESource)) {
-                if (match[1] != "V" && match[1] != "I") {
-                    cout << "Element " << match[1] << " not found in library\n";
-                    continue;
-                }
-                string name = match[1].str() + match[2].str();
-                string node1 = match[3].str();
-                string node2 = match[4].str();
-                string number[7] = {match[5].str(),match[7].str(),match[9].str(),match[11].str()
-                                    ,match[13].str(),match[15].str(),match[17].str()};
-                string unit[7] = {match[6].str(), match[8].str(), match[10].str(),
-                                  match[12].str(), match[14].str(),match[16].str(),match[18].str()};
-                double value[7];
-                int check=0;
-                for(int i=0; i<7; i++){
-                    try {
-                        value[i] = stod(number[i]);
-                    } catch (const invalid_argument &e) {
-                        cout<<value[i]<<endl;
-                        cout << "Error: Invalid numeric value\n";
-                        check=1;
-                        break;
-                    }
-                }
-                if(check)
-                    continue;
-                check=0;
-                for(int i=0; i<7; i++){
-                    string error = controller.handleError(name, circuit, value[i]);
-                    if (error != "") {
-                        cout << error;
-                        check=1;
-                        break;
-                    }
-                }if(check)
-                    continue;
-                for(int i=0; i<7; i++){
-                    if (!unit[i].empty()) {
-                        switch (unit[i][0]) {
-                            case 'G':
-                                value[i] *= 1e9;
-                                break;
-                            case 'M':
-                                value[i] *= 1e6;
-                                break;
-                            case 'k':
-                            case 'K':
-                                value[i] *= 1e3;
-                                break;
-                            case 'm':
-                                value[i] *= 1e-3;
-                                break;
-                            case 'u':
-                                value[i] *= 1e-6;
-                                break;
-                            case 'n':
-                                value[i] *= 1e-9;
-                                break;
-                        }
-                    }
-                }
-                if(value[2]<0 || value[3]<0 || value[4]<0 || value[5]<0 || value[6]<0){
-                    cout<<"Time parameters can not be Negative!\n";
-                    continue;
-                }
-                if(value[6]<value[5]+value[4]+value[3]+value[2]+value[1]){
-                    cout<<"Period shorter than enough!\n";
-                    continue;
-                }
-                if(match[1]=="V")
-                    cout << controller.addPulseVoltageSource(name, node1, node2, value[0], value[1], value[2], value[3], value[4], value[5], value[6], circuit);
-                else
-                    cout << controller.addPulseCurrentSource(name, node1, node2, value[0], value[1], value[2], value[3], value[4], value[5], value[6], circuit);
-            }else if (regex_match(input, match, add_element)) {
+            if (regex_match(input, match, add_element)) {
                 if (match[1] != "R" && match[1] != "L" && match[1] != "C") {
                     cout << "Element " << match[1] << " not found in library\n";
                     continue;
@@ -859,6 +434,7 @@ public:
                     }
                 }
                 cout << controller.addNewElement(node1, node2, name, value, circuit);
+
             } else if (regex_match(input, match, remove_element)) {
                 if (match[1] != "R" && match[1] != "L" && match[1] != "C" && match[1]!="D") {
                     cout << "Element " << match[1] << " not found in library\n";
@@ -909,97 +485,7 @@ public:
                 cout << err;
             } else if (regex_match(input, match, show_details)) {
                 controller.showCircuitDetails(circuit);
-            }
-            else if (regex_match(input, match, new_file)) {
-                string address = match[1];
-                ifstream fin(address, ios::in);
-
-                if (!fin) {
-                    cerr << "Error opening file!" << endl;
-                    return;
-                }
-
-                cout << "lets start" << endl;
-
-                string line;
-                regex word_regex("\\S+");
-                while (getline(fin, line)) {
-                    auto words_begin = sregex_iterator(line.begin(), line.end(), word_regex);
-                    auto words_end = sregex_iterator();
-
-                    vector<string> words;
-
-                    for (auto it = words_begin; it != words_end; ++it) {
-                        words.push_back(it->str());
-                    }
-
-
-                    string type = words[0];
-                    string name = words[1];
-                    string node1 = words[2];
-                    string node2 = words[3];
-                    string tmpValue = words[4];
-
-                    if (node1 == "GND"){
-                        controller.addGround(node1, circuit);
-                    }
-                    if (node2 == "GND"){
-                        controller.addGround(node2, circuit);
-                    }
-
-                    double value = 0;
-
-                    if (tmpValue[0] == '-') {
-                        cout << "Error: Invalid numeric value for " << name << endl;
-                        continue;
-                    }
-
-                    try {
-                        if (tmpValue.back() == 'G') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
-                        } else if (tmpValue.back() == 'M') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
-                        }
-                        else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
-                        } else if (tmpValue.back() == 'u') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
-                        } else if (tmpValue.back() == 'n') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-9;
-                        } else if (tmpValue.back() == 'm') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-3;
-                        } else {
-                            value = stod(tmpValue);
-                        }
-                    } catch (const invalid_argument &e) {
-                        cout << "Error: Invalid numeric value for " << name << endl;
-                        continue;
-                    }
-
-                    if (type == "R" || type == "C" || type == "L") {
-                        cout << controller.addNewElement(node1, node2, name, value, circuit);
-
-                    } else if (type == "D" || type == "Z") {
-                        string model;
-                        if (type == "D"){
-                            model = "D";
-                        }
-                        if (type == "Z"){
-                            model = "Z";
-                        }
-                        cout << controller.addDiode(node1, node2, name, model, circuit);
-
-                    } else {
-                        cout << "Element " << type << " not found in library\n";
-                    }
-                }
-
-                cout << "reading file ended :)" << endl;
-                fin.close();
-            }
-
-
-            else if (regex_match(input, match, exit)) {
+            } else if (regex_match(input, match, exit)) {
                 cout << "Bye Bye!\n";
                 return;
             } else
@@ -1011,5 +497,7 @@ public:
 int main() {
     View view;
     view.run();
+
     return 0;
 }
+

@@ -32,6 +32,8 @@ public:
     void setName(string new_name) {
         name = new_name;
     }
+
+    double getVoltage() { return voltage; }
 };
 
 class Circuit {
@@ -114,6 +116,13 @@ public:
     Node *getFirstNode() { return node1; }
 
     Node *getSecondNode() { return node2; }
+    virtual double getCurrent() {
+
+    }
+
+    virtual double getVoltage() {
+
+    }
 
     virtual ~Element() = default;
 };
@@ -124,6 +133,13 @@ public:
             : Element(name_, value_, n1, n2) {}
 
     string getType() override { return "Resistor"; }
+
+    double getCurrent() override {
+    }
+
+    double getVoltage() override {
+
+    }
 };
 
 class Capacitor : public Element {
@@ -132,6 +148,14 @@ public:
             : Element(name_, value_, n1, n2) {}
 
     string getType() override { return "Capacitor"; }
+
+    double getCurrent() override {
+
+    }
+
+    double getVoltage() override {
+
+    }
 };
 
 class Inductor : public Element {
@@ -140,6 +164,14 @@ public:
             : Element(name_, value_, n1, n2) {}
 
     string getType() override { return "Inductor"; }
+
+    double getCurrent() override {
+
+    }
+
+    double getVoltage() override {
+
+    }
 };
 
 class Diode : public Element {
@@ -330,6 +362,89 @@ public:
     string getType() override { return "Pulse Current Source"; }
 };
 
+class VCVS : public VoltageSource {
+private:
+    double gain;
+    Node *controlNode1;
+    Node *controlNode2;
+public:
+    VCVS(string name_, double gain_, Node *n1, Node *n2, Node *controlNode1_, Node *controlNode2_) :
+            VoltageSource(name_, 0, n1, n2), gain(gain_), controlNode1(controlNode1_), controlNode2(controlNode2_) {}
+
+    Node* getControlNode1() { return controlNode1; }
+    Node* getControlNode2() { return controlNode2; }
+    double getGain() { return gain; }
+
+    double getVoltage(double time) override {
+        double controlVoltage = controlNode1->getVoltage() - controlNode2->getVoltage();
+        return gain * controlVoltage;
+    }
+
+    string getType() override {
+        return "VCVS";
+    }
+};
+
+class CCVS : public VoltageSource {
+private:
+    double gain;
+    Element *controlElement;
+public:
+    CCVS(string name_, double gain_, Node *n1, Node *n2, Element *controlElement_)
+            : VoltageSource(name_, 0, n1, n2), gain(gain_), controlElement(controlElement_) {}
+    double getGain() { return gain; }
+    double getVoltage(double time) override {
+        double controlCurrent = controlElement->getCurrent();
+        return gain * controlCurrent;
+    }
+
+    string getType() override {
+        return "CCVS";
+    }
+};
+
+class VCCS : public CurrentSource {
+private:
+    double gain;
+    Node *controlNode1;
+    Node *controlNode2;
+public:
+    VCCS(string name_, double gain_, Node *n1, Node *n2, Node *controlNode1_, Node *controlNode2_) :
+            CurrentSource(name_, 0, n1, n2), gain(gain_), controlNode1(controlNode1_), controlNode2(controlNode2_) {}
+
+    Node* getControlNode1() { return controlNode1; }
+    Node* getControlNode2() { return controlNode2; }
+    double getGain() { return gain; }
+
+    double getCurrent(double time) override {
+        double controlVoltage = controlNode1->getVoltage() - controlNode2->getVoltage();
+        return gain * controlVoltage;
+    }
+
+    string getType() override {
+        return "VCCS";
+    }
+};
+
+class CCCS : public CurrentSource {
+private:
+    double gain;
+    Element *controlElement;
+public:
+    CCCS(string name_, double gain_, Node *n1, Node *n2, Element *controlElement_)
+            : CurrentSource(name_, 0, n1, n2), gain(gain_), controlElement(controlElement_) {}
+
+    double getGain() { return gain; }
+
+    double getCurrent(double time) override {
+        double controlCurrent = controlElement->getCurrent();
+        return gain * controlCurrent;
+    }
+
+    string getType() override {
+        return "CCCS";
+    }
+};
 
 class Controller {
 public:
@@ -572,6 +687,70 @@ public:
         return element->getType() + " added successfully!\n";
     }
 
+    string addVCVS(string name, string node1, string node2, string controlNode1, string controlNode2, double gain, Circuit* circuit){
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        Node *cn1 = circuit->getCreateNode(node1);
+        Node *cn2 = circuit->getCreateNode(node2);
+        Element *element = nullptr;
+        element = new VCVS(name, gain, n1, n2, cn1, cn2);
+        circuit->addElement(element);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return element->getType() + " added successfully!\n";
+    }
+
+    string addCCVS(string name, string node1, string node2, string controlElement, double gain, Circuit* circuit){
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        auto elements = circuit->getElements();
+        Element *element = nullptr;
+        Element *cElement = nullptr;
+        for (auto& e : elements){
+            if (e->getName() == controlElement){
+                cElement = e;
+                break;
+            }
+        }
+        element = new CCVS(name, gain, n1, n2, cElement);
+        circuit->addElement(element);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return element->getType() + " added successfully!\n";
+    }
+
+    string addVCCS(string name, string node1, string node2, string controlNode1, string conrolNode2, double gain, Circuit* circuit){
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        Node *cn1 = circuit->getCreateNode(node1);
+        Node *cn2 = circuit->getCreateNode(node2);
+        Element *element = nullptr;
+        element = new VCCS(name, gain, n1, n2, cn1, cn2);
+        circuit->addElement(element);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return element->getType() + " added successfully!\n";
+    }
+
+    string addCCCS(string name, string node1, string node2, string controlElement, double gain, Circuit* circuit){
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        auto elements = circuit->getElements();
+        Element *element = nullptr;
+        Element *cElement = nullptr;
+        for (auto& e : elements){
+            if (e->getName() == controlElement){
+                cElement = e;
+                break;
+            }
+        }
+        element = new CCCS(name, gain, n1, n2, cElement);
+        circuit->addElement(element);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return element->getType() + " added successfully!\n";
+    }
+
     void showCircuitDetails(Circuit *circuit) {
         cout << "Circuit Details:\nElements:\n";
         for (auto element: circuit->getElements()) {
@@ -625,6 +804,10 @@ public:
         regex addDCSource(R"(add\s+(VoltageSource|CurrentSource)(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
         regex addSINSource(R"(^\s*add\s+([A-Za-z])(\w+)\s+(\S+)\s+(\S+)\s+SIN\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
         regex addPULSESource(R"(^\s*add\s+([A-Za-z])(\w+)\s+(\S+)\s+(\S+)\s+PULSE\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
+        regex addVCVS(R"(^\s*add\s+E(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
+        regex addVCCS(R"(^\s*add\s+G(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
+        regex addCCVS(R"(^\s*add\s+H(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
+        regex addCCCS(R"(^\s*add\s+F(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
         regex exit(R"(^exit$)");
         while (true) {
             getline(cin, input);
@@ -998,6 +1181,204 @@ public:
                 fin.close();
             }
 
+            else if (regex_match(input, match, addVCVS)){
+                string name = match[1].str();
+                string node1 = match[2].str();
+                string node2 = match[3].str();
+                string controlNode1 = match[4].str();
+                string controlNode2 = match[5].str();
+                string tmpValue = match[6].str();
+                double gain;
+                try {
+                    if (tmpValue.back() == 'G') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
+                    } else if (tmpValue.back() == 'M') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
+                    }
+                    else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
+                    } else if (tmpValue.back() == 'u') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
+                    } else if (tmpValue.back() == 'n') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-9;
+                    } else if (tmpValue.back() == 'm') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-3;
+                    } else {
+                        gain = stod(tmpValue);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+                if (gain == 0) {
+                    cout << "Error: Gain cannot be zero" << endl;
+                    continue;
+                }
+                Node *cn1 = circuit->getCreateNode(controlNode1);
+                Node *cn2 = circuit->getCreateNode(controlNode2);
+                bool cn1Connected = false;
+                bool cn2Connected = false;
+                for (auto element : circuit->getElements()) {
+                    if (element->getFirstNode() == cn1 || element->getSecondNode() == cn1) {
+                        cn1Connected = true;
+                    }
+                    if (element->getFirstNode() == cn2 || element->getSecondNode() == cn2) {
+                        cn2Connected = true;
+                    }
+                }
+
+                if (!cn1Connected || !cn2Connected) {
+                    cout << "Error: " << controlNode1 << " and " << controlNode2 << " are not connected";
+                    continue;
+                }
+                cout << controller.addVCVS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
+            }
+
+            else if (regex_match(input, match, addVCCS)){
+                string name = match[1].str();
+                string node1 = match[2].str();
+                string node2 = match[3].str();
+                string controlNode1 = match[4].str();
+                string controlNode2 = match[5].str();
+                string tmpValue = match[6].str();
+                double gain;
+                try {
+                    if (tmpValue.back() == 'G') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
+                    } else if (tmpValue.back() == 'M') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
+                    }
+                    else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
+                    } else if (tmpValue.back() == 'u') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
+                    } else if (tmpValue.back() == 'n') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-9;
+                    } else if (tmpValue.back() == 'm') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-3;
+                    } else {
+                        gain = stod(tmpValue);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+                if (gain == 0) {
+                    cout << "Error: Gain cannot be zero" << endl;
+                    continue;
+                }
+                Node *cn1 = circuit->getCreateNode(controlNode1);
+                Node *cn2 = circuit->getCreateNode(controlNode2);
+                bool cn1Connected = false;
+                bool cn2Connected = false;
+                for (auto element : circuit->getElements()) {
+                    if (element->getFirstNode() == cn1 || element->getSecondNode() == cn1) {
+                        cn1Connected = true;
+                    }
+                    if (element->getFirstNode() == cn2 || element->getSecondNode() == cn2) {
+                        cn2Connected = true;
+                    }
+                }
+
+                if (!cn1Connected || !cn2Connected) {
+                    cout << "Error: " << controlNode1 << " and " << controlNode2 << " are not connected";
+                    continue;
+                }
+                cout << controller.addVCCS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
+            }
+            else if (regex_match(input, match, addCCVS)){
+                string name = match[1].str();
+                string node1 = match[2].str();
+                string node2 = match[3].str();
+                string cElement = match[4].str();
+                string tmpValue = match[5].str();
+                double gain;
+                try {
+                    if (tmpValue.back() == 'G') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
+                    } else if (tmpValue.back() == 'M') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
+                    }
+                    else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
+                    } else if (tmpValue.back() == 'u') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
+                    } else if (tmpValue.back() == 'n') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-9;
+                    } else if (tmpValue.back() == 'm') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-3;
+                    } else {
+                        gain = stod(tmpValue);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+                if (gain == 0) {
+                    cout << "Error: Gain cannot be zero" << endl;
+                    continue;
+                }
+
+                Element *controlElement = nullptr;
+                for (auto& element : circuit->getElements()) {
+                    if (element->getName() == cElement) {
+                        controlElement = element;
+                        break;
+                    }
+                }
+                if (controlElement == nullptr) {
+                    cout << "Error: " << cElement << " does not exist in the circuit" << endl;
+                    continue;
+                }
+                cout << controller.addCCVS(name, node1, node2, cElement, gain, circuit);
+            }
+
+            else if (regex_match(input, match, addCCCS)){
+                string name = match[1].str();
+                string node1 = match[2].str();
+                string node2 = match[3].str();
+                string cElement = match[4].str();
+                string tmpValue = match[5].str();
+                double gain;
+                try {
+                    if (tmpValue.back() == 'G') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
+                    } else if (tmpValue.back() == 'M') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
+                    }
+                    else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
+                    } else if (tmpValue.back() == 'u') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
+                    } else if (tmpValue.back() == 'n') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-9;
+                    } else if (tmpValue.back() == 'm') {
+                        gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-3;
+                    } else {
+                        gain = stod(tmpValue);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+                if (gain == 0) {
+                    cout << "Error: Gain cannot be zero" << endl;
+                    continue;
+                }
+
+                Element *controlElement = nullptr;
+                for (auto& element : circuit->getElements()) {
+                    if (element->getName() == cElement) {
+                        controlElement = element;
+                        break;
+                    }
+                }
+                if (controlElement == nullptr) {
+                    cout << "Error: " << cElement << " does not exist in the circuit" << endl;
+                    continue;
+                }
+                cout << controller.addCCCS(name, node1, node2, cElement, gain, circuit);
+            }
 
             else if (regex_match(input, match, exit)) {
                 cout << "Bye Bye!\n";
@@ -1011,5 +1392,6 @@ public:
 int main() {
     View view;
     view.run();
+    
     return 0;
 }

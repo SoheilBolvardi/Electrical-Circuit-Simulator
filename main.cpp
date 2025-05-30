@@ -1116,65 +1116,435 @@ public:
                         words.push_back(it->str());
                     }
 
+                    string name;
+                    string node1;
+                    string node2;
+                    string tmpValue;
+                    string tmpAmplitude;
+                    string tmpFrequency;
+                    string tmpOffset;
+                    string tmpVi;
+                    string tmpVf;
+                    string tmpTD;
+                    string tmpTR;
+                    string tmpTF;
+                    string tmpTOn;
+                    string tmpPeriod;
+
 
                     string type = words[0];
-                    string name = words[1];
-                    string node1 = words[2];
-                    string node2 = words[3];
-                    string tmpValue = words[4];
-
-                    if (node1 == "GND"){
-                        controller.addGround(node1, circuit);
-                    }
-                    if (node2 == "GND"){
-                        controller.addGround(node2, circuit);
-                    }
-
-                    double value = 0;
-
-                    if (tmpValue[0] == '-') {
-                        cout << "Error: Invalid numeric value for " << name << endl;
-                        continue;
-                    }
-
-                    try {
-                        if (tmpValue.back() == 'G') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
-                        } else if (tmpValue.back() == 'M') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
+                    if (type == "R" || type == "L" || type == "C" || type == "I" || type == "V" || type == "D" ||
+                        type == "Z") {
+                        name = words[1];
+                        node1 = words[2];
+                        node2 = words[3];
+                        tmpValue = words[4];
+                        if (node1 == "GND") {
+                            controller.addGround(node1, circuit);
                         }
-                        else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
-                        } else if (tmpValue.back() == 'u') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
-                        } else if (tmpValue.back() == 'n') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-9;
-                        } else if (tmpValue.back() == 'm') {
-                            value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-3;
-                        } else {
-                            value = stod(tmpValue);
+                        if (node2 == "GND") {
+                            controller.addGround(node2, circuit);
                         }
-                    } catch (const invalid_argument &e) {
-                        cout << "Error: Invalid numeric value for " << name << endl;
-                        continue;
+
+                        double value = 0;
+
+                        if (tmpValue[0] == '-') {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+
+                        try {
+                            if (tmpValue.back() == 'G') {
+                                value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
+                            } else if (tmpValue.back() == 'M') {
+                                value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
+                            } else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
+                                value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
+                            } else if (tmpValue.back() == 'u') {
+                                value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
+                            } else if (tmpValue.back() == 'n') {
+                                value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-9;
+                            } else if (tmpValue.back() == 'm') {
+                                value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-3;
+                            } else {
+                                value = stod(tmpValue);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+                        if (type == "R" || type == "C" || type == "L") {
+                            cout << controller.addNewElement(node1, node2, name, value, circuit);
+
+                        } else if (type == "D" || type == "Z") {
+                            string model;
+                            if (type == "D") {
+                                model = "D";
+                            }
+                            if (type == "Z") {
+                                model = "Z";
+                            }
+                            cout << controller.addDiode(node1, node2, name, model, circuit);
+                        } else if (type == "V"){
+                            cout << controller.addDCVoltageSource(name, node1, node2, value, circuit);
+                        } else if (type == "I"){
+                            cout << controller.addDCCurrentSource(name, node1, node2, value, circuit);
+                        }
+                    }
+                    if (type == "VSIN" || type == "ISIN"){
+                        name = words[1];
+                        node1 = words[2];
+                        node2 = words[3];
+                        tmpAmplitude = words[4];
+                        tmpFrequency = words[5];
+                        tmpOffset = words[6];
+                        double amplitude;
+                        double frequency;
+                        double offset;
+                        try {
+                            if (tmpAmplitude.back() == 'G') {
+                                amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e9;
+                            } else if (tmpAmplitude.back() == 'M') {
+                                amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e6;
+                            } else if (tmpAmplitude.back() == 'k' || tmpAmplitude.back() == 'K') {
+                                amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e3;
+                            } else if (tmpAmplitude.back() == 'u') {
+                                amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e-6;
+                            } else if (tmpAmplitude.back() == 'n') {
+                                amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e-9;
+                            } else if (tmpAmplitude.back() == 'm') {
+                                amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e-3;
+                            } else {
+                                amplitude = stod(tmpAmplitude);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+
+                        try {
+                            if (tmpFrequency.back() == 'G') {
+                                frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e9;
+                            } else if (tmpFrequency.back() == 'M') {
+                                frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e6;
+                            } else if (tmpFrequency.back() == 'k' || tmpFrequency.back() == 'K') {
+                                frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e3;
+                            } else if (tmpFrequency.back() == 'u') {
+                                frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e-6;
+                            } else if (tmpFrequency.back() == 'n') {
+                                frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e-9;
+                            } else if (tmpFrequency.back() == 'm') {
+                                frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e-3;
+                            } else {
+                                frequency = stod(tmpFrequency);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+                        try {
+                            if (tmpOffset.back() == 'G') {
+                                offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e9;
+                            } else if (tmpOffset.back() == 'M') {
+                                offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e6;
+                            } else if (tmpOffset.back() == 'k' || tmpOffset.back() == 'K') {
+                                offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e3;
+                            } else if (tmpOffset.back() == 'u') {
+                                offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e-6;
+                            } else if (tmpOffset.back() == 'n') {
+                                offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e-9;
+                            } else if (tmpOffset.back() == 'm') {
+                                offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e-3;
+                            } else {
+                                offset = stod(tmpOffset);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+
+                        if (type == "VSIN"){
+                            cout << controller.addSinusoidalVoltageSource(name, node1, node2, amplitude, frequency, offset, circuit);
+                        }
+                        if (type == "ISIN"){
+                            cout << controller.addSinusoidalCurrentSource(name, node1, node2, amplitude, frequency, offset, circuit);
+                        }
                     }
 
-                    if (type == "R" || type == "C" || type == "L") {
-                        cout << controller.addNewElement(node1, node2, name, value, circuit);
-
-                    } else if (type == "D" || type == "Z") {
-                        string model;
-                        if (type == "D"){
-                            model = "D";
+                    if (type == "VPULSE" || type == "IPULSE"){
+                        name = words[1];
+                        node1 = words[2];
+                        node2 = words[3];
+                        tmpVi = words[4];
+                        tmpVf = words[5];
+                        tmpTD = words[6];
+                        tmpTR = words[7];
+                        tmpTF = words[8];
+                        tmpTOn = words[9];
+                        tmpPeriod = words[10];
+                        double Vi, Vf, TD, TR, TF, TOn, period;
+                        try {
+                            if (tmpVi.back() == 'G') {
+                                Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e9;
+                            } else if (tmpVi.back() == 'M') {
+                                Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e6;
+                            } else if (tmpVi.back() == 'k' || tmpVi.back() == 'K') {
+                                Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e3;
+                            } else if (tmpVi.back() == 'u') {
+                                Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e-6;
+                            } else if (tmpVi.back() == 'n') {
+                                Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e-9;
+                            } else if (tmpVi.back() == 'm') {
+                                Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e-3;
+                            } else {
+                                Vi = stod(tmpVi);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
                         }
-                        if (type == "Z"){
-                            model = "Z";
-                        }
-                        cout << controller.addDiode(node1, node2, name, model, circuit);
 
-                    } else {
-                        cout << "Element " << type << " not found in library\n";
+                        try {
+                            if (tmpVf.back() == 'G') {
+                                Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e9;
+                            } else if (tmpVf.back() == 'M') {
+                                Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e6;
+                            } else if (tmpVf.back() == 'k' || tmpVf.back() == 'K') {
+                                Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e3;
+                            } else if (tmpVf.back() == 'u') {
+                                Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e-6;
+                            } else if (tmpVf.back() == 'n') {
+                                Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e-9;
+                            } else if (tmpVf.back() == 'm') {
+                                Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e-3;
+                            } else {
+                                Vf = stod(tmpVf);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+
+                        try {
+                            if (tmpTD.back() == 'G') {
+                                TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e9;
+                            } else if (tmpTD.back() == 'M') {
+                                TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e6;
+                            } else if (tmpTD.back() == 'k' || tmpTD.back() == 'K') {
+                                TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e3;
+                            } else if (tmpTD.back() == 'u') {
+                                TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e-6;
+                            } else if (tmpTD.back() == 'n') {
+                                TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e-9;
+                            } else if (tmpTD.back() == 'm') {
+                                TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e-3;
+                            } else {
+                                TD = stod(tmpTD);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+
+                        try {
+                            if (tmpTR.back() == 'G') {
+                                TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e9;
+                            } else if (tmpTR.back() == 'M') {
+                                TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e6;
+                            } else if (tmpTR.back() == 'k' || tmpTR.back() == 'K') {
+                                TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e3;
+                            } else if (tmpTR.back() == 'u') {
+                                TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e-6;
+                            } else if (tmpTR.back() == 'n') {
+                                TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e-9;
+                            } else if (tmpTR.back() == 'm') {
+                                TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e-3;
+                            } else {
+                                TR = stod(tmpTR);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+
+                        try {
+                            if (tmpTF.back() == 'G') {
+                                TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e9;
+                            } else if (tmpTF.back() == 'M') {
+                                TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e6;
+                            } else if (tmpTF.back() == 'k' || tmpTF.back() == 'K') {
+                                TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e3;
+                            } else if (tmpTF.back() == 'u') {
+                                TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e-6;
+                            } else if (tmpTF.back() == 'n') {
+                                TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e-9;
+                            } else if (tmpTF.back() == 'm') {
+                                TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e-3;
+                            } else {
+                                TF = stod(tmpTF);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+
+                        try {
+                            if (tmpTOn.back() == 'G') {
+                                TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e9;
+                            } else if (tmpTOn.back() == 'M') {
+                                TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e6;
+                            } else if (tmpTOn.back() == 'k' || tmpTOn.back() == 'K') {
+                                TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e3;
+                            } else if (tmpTOn.back() == 'u') {
+                                TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e-6;
+                            } else if (tmpTOn.back() == 'n') {
+                                TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e-9;
+                            } else if (tmpTOn.back() == 'm') {
+                                TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e-3;
+                            } else {
+                                TOn = stod(tmpTOn);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+
+                        try {
+                            if (tmpPeriod.back() == 'G') {
+                                period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e9;
+                            } else if (tmpPeriod.back() == 'M') {
+                                period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e6;
+                            } else if (tmpPeriod.back() == 'k' || tmpPeriod.back() == 'K') {
+                                period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e3;
+                            } else if (tmpPeriod.back() == 'u') {
+                                period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e-6;
+                            } else if (tmpPeriod.back() == 'n') {
+                                period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e-9;
+                            } else if (tmpPeriod.back() == 'm') {
+                                period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e-3;
+                            } else {
+                                period = stod(tmpPeriod);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+                        if (type == "VPULSE"){
+                            cout << controller.addPulseVoltageSource(name, node1, node2, Vi, Vf, TD, TR, TF, TOn, period, circuit);
+                        }
+                        if (type == "IPULSE"){
+                            cout << controller.addPulseCurrentSource(name, node1, node2, Vi, Vf, TD, TR, TF, TOn, period, circuit);
+                        }
                     }
+                    if (type == "E" || type == "G"){
+                        name = words[1];
+                        node1 = words[2];
+                        node2 = words[3];
+                        string controlNode1 = words[4];
+                        string controlNode2 = words[5];
+                        string tmpGain = words[5];
+                        double gain;
+                        Node *cn1 = circuit->getCreateNode(controlNode1);
+                        Node *cn2 = circuit->getCreateNode(controlNode2);
+                        bool cn1Connected = false;
+                        bool cn2Connected = false;
+                        for (auto element : circuit->getElements()) {
+                            if (element->getFirstNode() == cn1 || element->getSecondNode() == cn1) {
+                                cn1Connected = true;
+                            }
+                            if (element->getFirstNode() == cn2 || element->getSecondNode() == cn2) {
+                                cn2Connected = true;
+                            }
+                        }
+
+                        if (!cn1Connected || !cn2Connected) {
+                            cout << "Error: " << controlNode1 << " and " << controlNode2 << " are not connected" << endl;
+                            continue;
+                        }
+                        try {
+                            if (tmpGain.back() == 'G') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e9;
+                            } else if (tmpGain.back() == 'M') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e6;
+                            } else if (tmpGain.back() == 'k' || tmpGain.back() == 'K') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e3;
+                            } else if (tmpGain.back() == 'u') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-6;
+                            } else if (tmpGain.back() == 'n') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-9;
+                            } else if (tmpGain.back() == 'm') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-3;
+                            } else {
+                                gain = stod(tmpGain);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+                        if (gain == 0) {
+                            cout << "Error: Gain cannot be zero" << endl;
+                            continue;
+                        }
+                        if (type == "E"){
+                            cout << controller.addVCVS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
+                        }
+                        if (type == "G"){
+                            cout << controller.addVCCS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
+                        }
+                    }
+
+                    if (type == "H" || type == "F"){
+                        name = words[1];
+                        node1 = words[2];
+                        node2 = words[3];
+                        string cElement = words[4];
+                        string tmpGain = words[5];
+                        double gain;
+
+                        Element *controlElement = nullptr;
+                        for (auto& element : circuit->getElements()) {
+                            if (element->getName() == cElement) {
+                                controlElement = element;
+                                break;
+                            }
+                        }
+                        if (controlElement == nullptr) {
+                            cout << "Error: " << cElement << " does not exist in the circuit" << endl;
+                            continue;
+                        }
+                        try {
+                            if (tmpGain.back() == 'G') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e9;
+                            } else if (tmpGain.back() == 'M') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e6;
+                            } else if (tmpGain.back() == 'k' || tmpGain.back() == 'K') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e3;
+                            } else if (tmpGain.back() == 'u') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-6;
+                            } else if (tmpGain.back() == 'n') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-9;
+                            } else if (tmpGain.back() == 'm') {
+                                gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-3;
+                            } else {
+                                gain = stod(tmpGain);
+                            }
+                        } catch (const invalid_argument &e) {
+                            cout << "Error: Invalid numeric value for " << name << endl;
+                            continue;
+                        }
+                        if (gain == 0) {
+                            cout << "Error: Gain cannot be zero" << endl;
+                            continue;
+                        }
+                        if (type == "H"){
+                            cout << controller.addCCVS(name, node1, node2, cElement, gain, circuit);
+                        }
+                        if (type == "F"){
+                            cout << controller.addCCCS(name, node1, node2, cElement, gain, circuit);
+                        }
+
+                    }
+
                 }
 
                 cout << "reading file ended :)" << endl;

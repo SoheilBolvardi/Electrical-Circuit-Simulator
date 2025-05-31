@@ -61,6 +61,7 @@ public:
     }
 
     Node* getGround() {return gnd;}
+    vector<Node *> getNodes() {return nodes;}
 
     bool setGround(string name){
         if(!node_access.count(name))
@@ -398,6 +399,8 @@ public:
         return gain * controlCurrent;
     }
 
+    Element *getcontrolElement() {return controlElement;}
+
     string getType() override {
         return "CCVS";
     }
@@ -440,6 +443,8 @@ public:
         double controlCurrent = controlElement->getCurrent();
         return gain * controlCurrent;
     }
+
+    Element *getcontrolElement() {return controlElement;}
 
     string getType() override {
         return "CCCS";
@@ -774,10 +779,128 @@ public:
             cout<<circuit->getGround()->getName()<<endl;
         else
             cout<<"No ground is specified for this circuit\n";
+    }bool isConnected(Circuit* circuit) {
+        if (circuit->getNodes().empty()) return true;
+
+        unordered_map<string, vector<string>> adjacency;
+        for (Element* e : circuit->getElements()) {
+            if (!e) continue;
+            string a = e->getFirstNode()->getName();
+            string b = e->getSecondNode()->getName();
+            adjacency[a].push_back(b);
+            adjacency[b].push_back(a);
+        }
+
+        unordered_set<string> visited;
+        queue<string> q;
+        string start = circuit->getNodes()[0]->getName();
+        q.push(start);
+        visited.insert(start);
+
+        while (!q.empty()) {
+            string current = q.front(); q.pop();
+            for (const string& neighbor : adjacency[current]) {
+                if (!visited.count(neighbor)) {
+                    visited.insert(neighbor);
+                    q.push(neighbor);
+                }
+            }
+        }
+
+        return visited.size() == circuit->getNodeAccess().size();
+    }bool preAnalysisErrs(Circuit *circuit){
+        if(!circuit->getGround()){
+            cout<<"Error: No ground node detected in the circuit.\n";
+            return false;
+        }if(!isConnected(circuit)) {
+            cout << "Error: Not all nodes are connected!\n";
+            return false;
+        }
+        for(auto element: circuit->getElements()) {
+            if (element->getType() == "CCCS") {
+                auto *cc = dynamic_cast<CCCS *>(element);
+                if (cc) {
+                    Element *ctrl = cc->getcontrolElement();
+                    bool found = false;
+                    for (auto e : circuit->getElements()) {
+                        if (e == ctrl) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        cout << "Error: Dependent source " << cc->getName()
+                             << "  has an undefined control element.\n";
+                        return false;
+                    }
+                }
+            }
+            if (element->getType() == "CCVS") {
+                auto *cv = dynamic_cast<CCVS *>(element);
+                if (cv) {
+                    Element *ctrl = cv->getcontrolElement();
+                    bool found = false;
+                    for (auto e : circuit->getElements()) {
+                        if (e == ctrl) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        cout << "Error: Dependent source " << cv->getName()
+                             << "  has an undefined control element.\n";
+                        return false;
+                    }
+                }
+            }if (element->getType() == "VCCS") {
+                auto *vc = dynamic_cast<VCCS *>(element);
+                if (vc) {
+                    Node *ctrl = vc->getControlNode1();
+                    Node*ctrl2 = vc->getControlNode2();
+                    bool found = false;
+                    bool found2 = false;
+                    for (auto e : circuit->getNodes()) {
+                        if (e == ctrl) {
+                            found = true;
+                        }
+                        if(e==ctrl2)
+                            found2=true;
+                        if(found && found2)
+                            break;
+                    }
+                    if (!found || !found2 || (ctrl->getConnectedElements().size()==0) || (ctrl2->getConnectedElements().size()==0)) {
+                        cout << "Error: Dependent source " << vc->getName()
+                             << "  has an undefined control element.\n";
+                        return false;
+                    }
+                }
+            }if (element->getType() == "VCVS") {
+                auto *vv = dynamic_cast<VCVS *>(element);
+                if (vv) {
+                    Node *ctrl = vv->getControlNode1();
+                    Node*ctrl2 = vv->getControlNode2();
+                    bool found = false;
+                    bool found2 = false;
+                    for (auto e : circuit->getNodes()) {
+                        if (e == ctrl) {
+                            found = true;
+                        }
+                        if(e==ctrl2)
+                            found2=true;
+                        if(found && found2)
+                            break;
+                    }
+                    if (!found || !found2 || (ctrl->getConnectedElements().size()==0) || (ctrl2->getConnectedElements().size()==0)) {
+                        cout << "Error: Dependent source " << vv->getName()
+                             << "  has an undefined control element.\n";
+                        return false;
+                    }
+                }
+            }
+        }
+        cout<<"Seems fine!\n";
+        return true;
     }
-
-
-
 
 };
 
@@ -790,7 +913,8 @@ public:
         circuit = new Circuit();
         string input;
         smatch match;
-        regex add_element(R"(^\s*add\s+([A-Za-z])(\w+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
+        regex add_element(
+                R"(^\s*add\s+([A-Za-z])(\w+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
         regex remove_element(R"(^\s*delete\s+([A-Za-z])(\w+)\s*$)");
         regex add_diode(R"(^\s*add\s+(D)(\w+)\s+(\S+)\s+(\S+)\s+(D|Z)\s*$)");
         regex show_details(R"(^\s*show\s+details\s*$)");
@@ -801,13 +925,19 @@ public:
         regex list_element(R"(^\s*.list\s+(\w+)\s*$)");
         regex rename_node(R"(^\s*\.rename\s+node\s+(\S+)\s+(\S+)\s*$)");
         regex new_file(R"(NewFile ([a-zA-Z0-9\\-_\\.:\\/()\\s]+))");
-        regex addDCSource(R"(add\s+(VoltageSource|CurrentSource)(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
-        regex addSINSource(R"(^\s*add\s+([A-Za-z])(\w+)\s+(\S+)\s+(\S+)\s+SIN\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
-        regex addPULSESource(R"(^\s*add\s+([A-Za-z])(\w+)\s+(\S+)\s+(\S+)\s+PULSE\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
-        regex addVCVS(R"(^\s*add\s+E(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
-        regex addVCCS(R"(^\s*add\s+G(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
+        regex addDCSource(
+                R"(add\s+(VoltageSource|CurrentSource)(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
+        regex addSINSource(
+                R"(^\s*add\s+([A-Za-z])(\w+)\s+(\S+)\s+(\S+)\s+SIN\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
+        regex addPULSESource(
+                R"(^\s*add\s+([A-Za-z])(\w+)\s+(\S+)\s+(\S+)\s+PULSE\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
+        regex addVCVS(
+                R"(^\s*add\s+E(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
+        regex addVCCS(
+                R"(^\s*add\s+G(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
         regex addCCVS(R"(^\s*add\s+H(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
         regex addCCCS(R"(^\s*add\s+F(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
+        regex preanalysischeck(R"(^\s*pre-analysis\s+check\s*$)");
         regex exit(R"(^exit$)");
         while (true) {
             getline(cin, input);
@@ -852,11 +982,11 @@ public:
                             break;
                     }
                 }
-                if(match[1]=="VoltageSource")
+                if (match[1] == "VoltageSource")
                     cout << controller.addDCVoltageSource(name, node1, node2, value, circuit);
                 else
                     cout << controller.addDCCurrentSource(name, node1, node2, value, circuit);
-            }else if (regex_match(input, match, addSINSource)) {
+            } else if (regex_match(input, match, addSINSource)) {
                 if (match[1] != "V" && match[1] != "I") {
                     cout << "Element " << match[1] << " not found in library\n";
                     continue;
@@ -864,33 +994,34 @@ public:
                 string name = match[1].str() + match[2].str();
                 string node1 = match[3].str();
                 string node2 = match[4].str();
-                string number[3] = {match[5].str(),match[7].str(),match[9].str()};
+                string number[3] = {match[5].str(), match[7].str(), match[9].str()};
                 string unit[3] = {match[6].str(), match[8].str(), match[10].str()};
                 double value[3];
-                int check=0;
-                for(int i=0; i<3; i++){
+                int check = 0;
+                for (int i = 0; i < 3; i++) {
                     try {
                         value[i] = stod(number[i]);
                     } catch (const invalid_argument &e) {
-                        cout<<value[i]<<endl;
+                        cout << value[i] << endl;
                         cout << "Error: Invalid numeric value\n";
-                        check=1;
+                        check = 1;
                         break;
                     }
                 }
-                if(check)
+                if (check)
                     continue;
-                check=0;
-                for(int i=0; i<3; i++){
+                check = 0;
+                for (int i = 0; i < 3; i++) {
                     string error = controller.handleError(name, circuit, value[i]);
                     if (error != "") {
                         cout << error;
-                        check=1;
+                        check = 1;
                         break;
                     }
-                }if(check)
+                }
+                if (check)
                     continue;
-                for(int i=0; i<3; i++){
+                for (int i = 0; i < 3; i++) {
                     if (!unit[i].empty()) {
                         switch (unit[i][0]) {
                             case 'G':
@@ -915,15 +1046,17 @@ public:
                         }
                     }
                 }
-                if(value[2]<=0){
-                    cout<<"Frequency can not be Zero or Negative!\n";
+                if (value[2] <= 0) {
+                    cout << "Frequency can not be Zero or Negative!\n";
                     continue;
                 }
-                if(match[1]=="V")
-                    cout << controller.addSinusoidalVoltageSource(name, node1, node2, value[1], value[2], value[0], circuit);
+                if (match[1] == "V")
+                    cout << controller.addSinusoidalVoltageSource(name, node1, node2, value[1], value[2], value[0],
+                                                                  circuit);
                 else
-                    cout << controller.addSinusoidalCurrentSource(name, node1, node2, value[1], value[2], value[0], circuit);
-            }else if (regex_match(input, match, addPULSESource)) {
+                    cout << controller.addSinusoidalCurrentSource(name, node1, node2, value[1], value[2], value[0],
+                                                                  circuit);
+            } else if (regex_match(input, match, addPULSESource)) {
                 if (match[1] != "V" && match[1] != "I") {
                     cout << "Element " << match[1] << " not found in library\n";
                     continue;
@@ -931,35 +1064,36 @@ public:
                 string name = match[1].str() + match[2].str();
                 string node1 = match[3].str();
                 string node2 = match[4].str();
-                string number[7] = {match[5].str(),match[7].str(),match[9].str(),match[11].str()
-                        ,match[13].str(),match[15].str(),match[17].str()};
+                string number[7] = {match[5].str(), match[7].str(), match[9].str(), match[11].str(), match[13].str(),
+                                    match[15].str(), match[17].str()};
                 string unit[7] = {match[6].str(), match[8].str(), match[10].str(),
-                                  match[12].str(), match[14].str(),match[16].str(),match[18].str()};
+                                  match[12].str(), match[14].str(), match[16].str(), match[18].str()};
                 double value[7];
-                int check=0;
-                for(int i=0; i<7; i++){
+                int check = 0;
+                for (int i = 0; i < 7; i++) {
                     try {
                         value[i] = stod(number[i]);
                     } catch (const invalid_argument &e) {
-                        cout<<value[i]<<endl;
+                        cout << value[i] << endl;
                         cout << "Error: Invalid numeric value\n";
-                        check=1;
+                        check = 1;
                         break;
                     }
                 }
-                if(check)
+                if (check)
                     continue;
-                check=0;
-                for(int i=0; i<7; i++){
+                check = 0;
+                for (int i = 0; i < 7; i++) {
                     string error = controller.handleError(name, circuit, value[i]);
                     if (error != "") {
                         cout << error;
-                        check=1;
+                        check = 1;
                         break;
                     }
-                }if(check)
+                }
+                if (check)
                     continue;
-                for(int i=0; i<7; i++){
+                for (int i = 0; i < 7; i++) {
                     if (!unit[i].empty()) {
                         switch (unit[i][0]) {
                             case 'G':
@@ -984,19 +1118,21 @@ public:
                         }
                     }
                 }
-                if(value[2]<0 || value[3]<0 || value[4]<0 || value[5]<0 || value[6]<0){
-                    cout<<"Time parameters can not be Negative!\n";
+                if (value[2] < 0 || value[3] < 0 || value[4] < 0 || value[5] < 0 || value[6] < 0) {
+                    cout << "Time parameters can not be Negative!\n";
                     continue;
                 }
-                if(value[6]<value[5]+value[4]+value[3]+value[2]+value[1]){
-                    cout<<"Period shorter than enough!\n";
+                if (value[6] < value[5] + value[4] + value[3] + value[2] + value[1]) {
+                    cout << "Period shorter than enough!\n";
                     continue;
                 }
-                if(match[1]=="V")
-                    cout << controller.addPulseVoltageSource(name, node1, node2, value[0], value[1], value[2], value[3], value[4], value[5], value[6], circuit);
+                if (match[1] == "V")
+                    cout << controller.addPulseVoltageSource(name, node1, node2, value[0], value[1], value[2], value[3],
+                                                             value[4], value[5], value[6], circuit);
                 else
-                    cout << controller.addPulseCurrentSource(name, node1, node2, value[0], value[1], value[2], value[3], value[4], value[5], value[6], circuit);
-            }else if (regex_match(input, match, add_element)) {
+                    cout << controller.addPulseCurrentSource(name, node1, node2, value[0], value[1], value[2], value[3],
+                                                             value[4], value[5], value[6], circuit);
+            } else if (regex_match(input, match, add_element)) {
                 if (match[1] != "R" && match[1] != "L" && match[1] != "C") {
                     cout << "Element " << match[1] << " not found in library\n";
                     continue;
@@ -1043,35 +1179,36 @@ public:
                 }
                 cout << controller.addNewElement(node1, node2, name, value, circuit);
             } else if (regex_match(input, match, remove_element)) {
-                if (match[1] != "R" && match[1] != "L" && match[1] != "C" && match[1]!="D") {
+                if (match[1] != "R" && match[1] != "L" && match[1] != "C" && match[1] != "D") {
                     cout << "Element " << match[1] << " not found in library\n";
                     continue;
                 }
                 cout << controller.removeElement(match[1].str() + match[2].str(), circuit);
             } else if (regex_match(input, match, add_diode)) {
                 string name = match[1].str() + match[2].str();
-                string node1= match[3];
-                string node2=match[4];
-                string model=match[5];
+                string node1 = match[3];
+                string node2 = match[4];
+                string model = match[5];
                 string error = controller.handleError(name, circuit, 0);
                 if (error != "") {
                     cout << error;
                     continue;
                 }
-                if(match[1]!="D") {
+                if (match[1] != "D") {
                     cout << "Error: Element " << name << " not found in library\n";
                     continue;
-                }if(model=="D" || model=="Z")
-                    cout<<controller.addDiode(node1, node2, name, model, circuit);
+                }
+                if (model == "D" || model == "Z")
+                    cout << controller.addDiode(node1, node2, name, model, circuit);
             } else if (regex_match(input, match, add_ground)) {
-                if(match[1]!="GND"){
-                    cout<<"Error: Element "<<match[1]<<" not found in library\n";
+                if (match[1] != "GND") {
+                    cout << "Error: Element " << match[1] << " not found in library\n";
                     continue;
                 }
                 cout << controller.addGround(match[2], circuit);
             } else if (regex_match(input, match, delete_ground)) {
-                if(match[1]!="GND"){
-                    cout<<"Error: Element "<<match[1]<<" not found in library\n";
+                if (match[1] != "GND") {
+                    cout << "Error: Element " << match[1] << " not found in library\n";
                     continue;
                 }
                 cout << controller.deleteGround(match[2], circuit);
@@ -1080,10 +1217,11 @@ public:
             } else if (regex_match(input, match, list)) {
                 controller.list(circuit);
             } else if (regex_match(input, match, list_element)) {
-                if(match[1]!="R" && match[1]!="C" && match[1]!="L" && match[1]!="D" && match[1]!="Z") {
+                if (match[1] != "R" && match[1] != "C" && match[1] != "L" && match[1] != "D" && match[1] != "Z") {
                     cout << "Error: Element " << match[1] << " not found in library\n";
                     continue;
-                }controller.listElement(match[1], circuit);
+                }
+                controller.listElement(match[1], circuit);
             } else if (regex_match(input, match, rename_node)) {
                 string old_name = match[1];
                 string new_name = match[2];
@@ -1092,8 +1230,7 @@ public:
                 cout << err;
             } else if (regex_match(input, match, show_details)) {
                 controller.showCircuitDetails(circuit);
-            }
-            else if (regex_match(input, match, new_file)) {
+            } else if (regex_match(input, match, new_file)) {
                 string address = match[1];
                 ifstream fin(address, ios::in);
 
@@ -1185,13 +1322,13 @@ public:
                                 model = "Z";
                             }
                             cout << controller.addDiode(node1, node2, name, model, circuit);
-                        } else if (type == "V"){
+                        } else if (type == "V") {
                             cout << controller.addDCVoltageSource(name, node1, node2, value, circuit);
-                        } else if (type == "I"){
+                        } else if (type == "I") {
                             cout << controller.addDCCurrentSource(name, node1, node2, value, circuit);
                         }
                     }
-                    if (type == "VSIN" || type == "ISIN"){
+                    if (type == "VSIN" || type == "ISIN") {
                         name = words[1];
                         node1 = words[2];
                         node2 = words[3];
@@ -1263,15 +1400,17 @@ public:
                             continue;
                         }
 
-                        if (type == "VSIN"){
-                            cout << controller.addSinusoidalVoltageSource(name, node1, node2, amplitude, frequency, offset, circuit);
+                        if (type == "VSIN") {
+                            cout << controller.addSinusoidalVoltageSource(name, node1, node2, amplitude, frequency,
+                                                                          offset, circuit);
                         }
-                        if (type == "ISIN"){
-                            cout << controller.addSinusoidalCurrentSource(name, node1, node2, amplitude, frequency, offset, circuit);
+                        if (type == "ISIN") {
+                            cout << controller.addSinusoidalCurrentSource(name, node1, node2, amplitude, frequency,
+                                                                          offset, circuit);
                         }
                     }
 
-                    if (type == "VPULSE" || type == "IPULSE"){
+                    if (type == "VPULSE" || type == "IPULSE") {
                         name = words[1];
                         node1 = words[2];
                         node2 = words[3];
@@ -1429,14 +1568,16 @@ public:
                             cout << "Error: Invalid numeric value for " << name << endl;
                             continue;
                         }
-                        if (type == "VPULSE"){
-                            cout << controller.addPulseVoltageSource(name, node1, node2, Vi, Vf, TD, TR, TF, TOn, period, circuit);
+                        if (type == "VPULSE") {
+                            cout << controller.addPulseVoltageSource(name, node1, node2, Vi, Vf, TD, TR, TF, TOn,
+                                                                     period, circuit);
                         }
-                        if (type == "IPULSE"){
-                            cout << controller.addPulseCurrentSource(name, node1, node2, Vi, Vf, TD, TR, TF, TOn, period, circuit);
+                        if (type == "IPULSE") {
+                            cout << controller.addPulseCurrentSource(name, node1, node2, Vi, Vf, TD, TR, TF, TOn,
+                                                                     period, circuit);
                         }
                     }
-                    if (type == "E" || type == "G"){
+                    if (type == "E" || type == "G") {
                         name = words[1];
                         node1 = words[2];
                         node2 = words[3];
@@ -1448,7 +1589,7 @@ public:
                         Node *cn2 = circuit->getCreateNode(controlNode2);
                         bool cn1Connected = false;
                         bool cn2Connected = false;
-                        for (auto element : circuit->getElements()) {
+                        for (auto element: circuit->getElements()) {
                             if (element->getFirstNode() == cn1 || element->getSecondNode() == cn1) {
                                 cn1Connected = true;
                             }
@@ -1458,7 +1599,8 @@ public:
                         }
 
                         if (!cn1Connected || !cn2Connected) {
-                            cout << "Error: " << controlNode1 << " and " << controlNode2 << " are not connected" << endl;
+                            cout << "Error: " << controlNode1 << " and " << controlNode2 << " are not connected"
+                                 << endl;
                             continue;
                         }
                         try {
@@ -1485,15 +1627,15 @@ public:
                             cout << "Error: Gain cannot be zero" << endl;
                             continue;
                         }
-                        if (type == "E"){
+                        if (type == "E") {
                             cout << controller.addVCVS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
                         }
-                        if (type == "G"){
+                        if (type == "G") {
                             cout << controller.addVCCS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
                         }
                     }
 
-                    if (type == "H" || type == "F"){
+                    if (type == "H" || type == "F") {
                         name = words[1];
                         node1 = words[2];
                         node2 = words[3];
@@ -1502,7 +1644,7 @@ public:
                         double gain;
 
                         Element *controlElement = nullptr;
-                        for (auto& element : circuit->getElements()) {
+                        for (auto &element: circuit->getElements()) {
                             if (element->getName() == cElement) {
                                 controlElement = element;
                                 break;
@@ -1536,10 +1678,10 @@ public:
                             cout << "Error: Gain cannot be zero" << endl;
                             continue;
                         }
-                        if (type == "H"){
+                        if (type == "H") {
                             cout << controller.addCCVS(name, node1, node2, cElement, gain, circuit);
                         }
-                        if (type == "F"){
+                        if (type == "F") {
                             cout << controller.addCCCS(name, node1, node2, cElement, gain, circuit);
                         }
 
@@ -1549,10 +1691,8 @@ public:
 
                 cout << "reading file ended :)" << endl;
                 fin.close();
-            }
-
-            else if (regex_match(input, match, addVCVS)){
-                string name = match[1].str();
+            } else if (regex_match(input, match, addVCVS)) {
+                string name = 'E'+match[1].str();
                 string node1 = match[2].str();
                 string node2 = match[3].str();
                 string controlNode1 = match[4].str();
@@ -1564,8 +1704,7 @@ public:
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
                     } else if (tmpValue.back() == 'M') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
-                    }
-                    else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
+                    } else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
                     } else if (tmpValue.back() == 'u') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
@@ -1588,7 +1727,7 @@ public:
                 Node *cn2 = circuit->getCreateNode(controlNode2);
                 bool cn1Connected = false;
                 bool cn2Connected = false;
-                for (auto element : circuit->getElements()) {
+                for (auto element: circuit->getElements()) {
                     if (element->getFirstNode() == cn1 || element->getSecondNode() == cn1) {
                         cn1Connected = true;
                     }
@@ -1602,10 +1741,8 @@ public:
                     continue;
                 }
                 cout << controller.addVCVS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
-            }
-
-            else if (regex_match(input, match, addVCCS)){
-                string name = match[1].str();
+            } else if (regex_match(input, match, addVCCS)) {
+                string name = 'G'+match[1].str();
                 string node1 = match[2].str();
                 string node2 = match[3].str();
                 string controlNode1 = match[4].str();
@@ -1617,8 +1754,7 @@ public:
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
                     } else if (tmpValue.back() == 'M') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
-                    }
-                    else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
+                    } else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
                     } else if (tmpValue.back() == 'u') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
@@ -1641,7 +1777,7 @@ public:
                 Node *cn2 = circuit->getCreateNode(controlNode2);
                 bool cn1Connected = false;
                 bool cn2Connected = false;
-                for (auto element : circuit->getElements()) {
+                for (auto element: circuit->getElements()) {
                     if (element->getFirstNode() == cn1 || element->getSecondNode() == cn1) {
                         cn1Connected = true;
                     }
@@ -1655,9 +1791,8 @@ public:
                     continue;
                 }
                 cout << controller.addVCCS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
-            }
-            else if (regex_match(input, match, addCCVS)){
-                string name = match[1].str();
+            } else if (regex_match(input, match, addCCVS)) {
+                string name = 'H'+match[1].str();
                 string node1 = match[2].str();
                 string node2 = match[3].str();
                 string cElement = match[4].str();
@@ -1668,8 +1803,7 @@ public:
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
                     } else if (tmpValue.back() == 'M') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
-                    }
-                    else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
+                    } else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
                     } else if (tmpValue.back() == 'u') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
@@ -1690,7 +1824,7 @@ public:
                 }
 
                 Element *controlElement = nullptr;
-                for (auto& element : circuit->getElements()) {
+                for (auto &element: circuit->getElements()) {
                     if (element->getName() == cElement) {
                         controlElement = element;
                         break;
@@ -1701,10 +1835,8 @@ public:
                     continue;
                 }
                 cout << controller.addCCVS(name, node1, node2, cElement, gain, circuit);
-            }
-
-            else if (regex_match(input, match, addCCCS)){
-                string name = match[1].str();
+            } else if (regex_match(input, match, addCCCS)) {
+                string name = 'F'+match[1].str();
                 string node1 = match[2].str();
                 string node2 = match[3].str();
                 string cElement = match[4].str();
@@ -1715,8 +1847,7 @@ public:
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
                     } else if (tmpValue.back() == 'M') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
-                    }
-                    else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
+                    } else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
                     } else if (tmpValue.back() == 'u') {
                         gain = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
@@ -1737,7 +1868,7 @@ public:
                 }
 
                 Element *controlElement = nullptr;
-                for (auto& element : circuit->getElements()) {
+                for (auto &element: circuit->getElements()) {
                     if (element->getName() == cElement) {
                         controlElement = element;
                         break;
@@ -1748,9 +1879,9 @@ public:
                     continue;
                 }
                 cout << controller.addCCCS(name, node1, node2, cElement, gain, circuit);
-            }
-
-            else if (regex_match(input, match, exit)) {
+            } else if (regex_match(input, match, preanalysischeck)) {
+                controller.preAnalysisErrs(circuit);
+            } else if (regex_match(input, match, exit)) {
                 cout << "Bye Bye!\n";
                 return;
             } else
@@ -1759,9 +1890,8 @@ public:
     }
 };
 
-int main() {
+int main(){
     View view;
     view.run();
-    
     return 0;
 }

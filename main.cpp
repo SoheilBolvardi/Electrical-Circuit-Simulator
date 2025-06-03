@@ -1,5 +1,11 @@
 #include <bits/stdc++.h>
 #include <fstream>
+#include <sys/stat.h>
+#include <direct.h>
+#include <unistd.h>
+#include <windows.h>
+#include <dirent.h>
+
 
 using namespace std;
 
@@ -224,7 +230,7 @@ public:
         return getValue();
     }
 
-    string getType() override { return "DC Voltage Source"; }
+    string getType() override { return "VDC"; }
 };
 
 class SinusoidalVoltageSource : public VoltageSource {
@@ -244,7 +250,7 @@ public:
 
     double getOffset(){return offset;}
 
-    string getType() override { return "Sinusoidal Voltage Source"; }
+    string getType() override { return "VSIN"; }
 };
 
 class PulseVoltageSource : public VoltageSource {
@@ -261,6 +267,14 @@ public:
     PulseVoltageSource(string name_, double V1_, double V2_, double TD_, double TR_, double TF_, double TOn_, double period_, Node *n1, Node *n2)
             : VoltageSource(name_, V1_, n1, n2), V1(V1_), V2(V2_), TD(TD_), TR(TR_), TF(TF_), TOn(TOn_), period(period_) {}
 
+
+    double getV1() const     { return V1; }
+    double getV2() const     { return V2; }
+    double getTD() const     { return TD; }
+    double getTR() const     { return TR; }
+    double getTF() const     { return TF; }
+    double getTOn() const    { return TOn; }
+    double getPeriod() const { return period; }
     double getVoltage(double time) override {
         double t = fmod(time, period);
 
@@ -281,7 +295,7 @@ public:
         }
     }
 
-    string getType() override { return "Pulse Voltage Source"; }
+    string getType() override { return "VPULSE"; }
 };
 
 class CurrentSource : public Element {
@@ -303,7 +317,7 @@ public:
         return getValue();
     }
 
-    string getType() override { return "DC Current Source"; }
+    string getType() override { return "IDC"; }
 };
 
 class SinusoidalCurrentSource : public CurrentSource {
@@ -323,7 +337,7 @@ public:
 
     double getOffset(){return offset;}
 
-    string getType() override { return "Sinusoidal Current Source"; }
+    string getType() override { return "ISIN"; }
 };
 
 class PulseCurrentSource : public CurrentSource {
@@ -339,6 +353,14 @@ private:
 public:
     PulseCurrentSource(string name_, double I1_, double I2_, double TD_, double TR_, double TF_, double TOn_, double period_, Node *n1, Node *n2)
             : CurrentSource(name_, I1_, n1, n2), I1(I1_), I2(I2_), TD(TD_), TR(TR_), TF(TF_), TOn(TOn_), period(period_) {}
+
+    double getI1() const      { return I1; }
+    double getI2() const      { return I2; }
+    double getTD() const      { return TD; }
+    double getTR() const      { return TR; }
+    double getTF() const      { return TF; }
+    double getTOn() const     { return TOn; }
+    double getPeriod() const  { return period; }
 
     double getCurrent(double time) override {
         double t = fmod(time, period);
@@ -360,7 +382,7 @@ public:
         }
     }
 
-    string getType() override { return "Pulse Current Source"; }
+    string getType() override { return "IPULSE"; }
 };
 
 class VCVS : public VoltageSource {
@@ -902,12 +924,641 @@ public:
         return true;
     }
 
+    void loadCircuit(Circuit *circuit, string address){
+        ifstream fin(address, ios::in);
+
+        if (!fin) {
+            cerr << "Error opening file!" << endl;
+            return;
+        }
+
+        string line;
+        regex word_regex("\\S+");
+        string tmpAddress;
+        unsigned int t1;
+        unsigned int t2;
+        t1 = address.find_last_of("\\") + 1;
+        t2 = address.length()-11;
+        tmpAddress = address.substr(t1, t2);
+        cout << tmpAddress << ":" << endl;
+        while (getline(fin, line)) {
+            auto words_begin = sregex_iterator(line.begin(), line.end(), word_regex);
+            auto words_end = sregex_iterator();
+
+            vector<string> words;
+
+            for (auto it = words_begin; it != words_end; ++it) {
+                words.push_back(it->str());
+            }
+
+            string name;
+            string node1;
+            string node2;
+            string tmpValue;
+            string tmpAmplitude;
+            string tmpFrequency;
+            string tmpOffset;
+            string tmpVi;
+            string tmpVf;
+            string tmpTD;
+            string tmpTR;
+            string tmpTF;
+            string tmpTOn;
+            string tmpPeriod;
+
+
+            string type = words[0];
+            if (type == "R" || type == "L" || type == "C" || type == "I" || type == "V") {
+                name = words[1];
+                node1 = words[2];
+                node2 = words[3];
+                tmpValue = words[4];
+                if (node1 == "GND") {
+                    addGround(node1, circuit);
+                }
+                if (node2 == "GND") {
+                    addGround(node2, circuit);
+                }
+
+                double value = 0;
+
+                if (tmpValue[0] == '-') {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+
+                try {
+                    if (tmpValue.back() == 'G') {
+                        value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e9;
+                    } else if (tmpValue.back() == 'M') {
+                        value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e6;
+                    } else if (tmpValue.back() == 'k' || tmpValue.back() == 'K') {
+                        value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e3;
+                    } else if (tmpValue.back() == 'u') {
+                        value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-6;
+                    } else if (tmpValue.back() == 'n') {
+                        value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-9;
+                    } else if (tmpValue.back() == 'm') {
+                        value = stod(tmpValue.substr(0, tmpValue.size() - 1)) * 1e-3;
+                    } else {
+                        value = stod(tmpValue);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+                if (type == "R" || type == "C" || type == "L") {
+                    cout << addNewElement(node1, node2, name, value, circuit);
+
+                } else if (type == "V") {
+                    cout << addDCVoltageSource(name, node1, node2, value, circuit);
+                } else if (type == "I") {
+                    cout << addDCCurrentSource(name, node1, node2, value, circuit);
+                }
+            }
+            if (type == "D" || type == "Z"){
+                name = words[1];
+                node1 = words[2];
+                node2 = words[3];
+                if (node1 == "GND") {
+                    addGround(node1, circuit);
+                }
+                if (node2 == "GND") {
+                    addGround(node2, circuit);
+                }
+                string model;
+                if (type == "D") {
+                    model = "D";
+                }
+                if (type == "Z") {
+                    model = "Z";
+                }
+                cout << addDiode(node1, node2, name, model, circuit);
+            }
+            if (type == "VSIN" || type == "ISIN") {
+                name = words[1];
+                node1 = words[2];
+                node2 = words[3];
+                tmpAmplitude = words[4];
+                tmpFrequency = words[5];
+                tmpOffset = words[6];
+                double amplitude;
+                double frequency;
+                double offset;
+                try {
+                    if (tmpAmplitude.back() == 'G') {
+                        amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e9;
+                    } else if (tmpAmplitude.back() == 'M') {
+                        amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e6;
+                    } else if (tmpAmplitude.back() == 'k' || tmpAmplitude.back() == 'K') {
+                        amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e3;
+                    } else if (tmpAmplitude.back() == 'u') {
+                        amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e-6;
+                    } else if (tmpAmplitude.back() == 'n') {
+                        amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e-9;
+                    } else if (tmpAmplitude.back() == 'm') {
+                        amplitude = stod(tmpAmplitude.substr(0, tmpAmplitude.size() - 1)) * 1e-3;
+                    } else {
+                        amplitude = stod(tmpAmplitude);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+
+                try {
+                    if (tmpFrequency.back() == 'G') {
+                        frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e9;
+                    } else if (tmpFrequency.back() == 'M') {
+                        frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e6;
+                    } else if (tmpFrequency.back() == 'k' || tmpFrequency.back() == 'K') {
+                        frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e3;
+                    } else if (tmpFrequency.back() == 'u') {
+                        frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e-6;
+                    } else if (tmpFrequency.back() == 'n') {
+                        frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e-9;
+                    } else if (tmpFrequency.back() == 'm') {
+                        frequency = stod(tmpFrequency.substr(0, tmpFrequency.size() - 1)) * 1e-3;
+                    } else {
+                        frequency = stod(tmpFrequency);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+                try {
+                    if (tmpOffset.back() == 'G') {
+                        offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e9;
+                    } else if (tmpOffset.back() == 'M') {
+                        offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e6;
+                    } else if (tmpOffset.back() == 'k' || tmpOffset.back() == 'K') {
+                        offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e3;
+                    } else if (tmpOffset.back() == 'u') {
+                        offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e-6;
+                    } else if (tmpOffset.back() == 'n') {
+                        offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e-9;
+                    } else if (tmpOffset.back() == 'm') {
+                        offset = stod(tmpOffset.substr(0, tmpOffset.size() - 1)) * 1e-3;
+                    } else {
+                        offset = stod(tmpOffset);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+
+                if (type == "VSIN") {
+                    cout << addSinusoidalVoltageSource(name, node1, node2, amplitude, frequency,
+                                                                  offset, circuit);
+                }
+                if (type == "ISIN") {
+                    cout << addSinusoidalCurrentSource(name, node1, node2, amplitude, frequency,
+                                                                  offset, circuit);
+                }
+            }
+
+            if (type == "VPULSE" || type == "IPULSE") {
+                name = words[1];
+                node1 = words[2];
+                node2 = words[3];
+                tmpVi = words[4];
+                tmpVf = words[5];
+                tmpTD = words[6];
+                tmpTR = words[7];
+                tmpTF = words[8];
+                tmpTOn = words[9];
+                tmpPeriod = words[10];
+                double Vi, Vf, TD, TR, TF, TOn, period;
+                try {
+                    if (tmpVi.back() == 'G') {
+                        Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e9;
+                    } else if (tmpVi.back() == 'M') {
+                        Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e6;
+                    } else if (tmpVi.back() == 'k' || tmpVi.back() == 'K') {
+                        Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e3;
+                    } else if (tmpVi.back() == 'u') {
+                        Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e-6;
+                    } else if (tmpVi.back() == 'n') {
+                        Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e-9;
+                    } else if (tmpVi.back() == 'm') {
+                        Vi = stod(tmpVi.substr(0, tmpVi.size() - 1)) * 1e-3;
+                    } else {
+                        Vi = stod(tmpVi);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+
+                try {
+                    if (tmpVf.back() == 'G') {
+                        Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e9;
+                    } else if (tmpVf.back() == 'M') {
+                        Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e6;
+                    } else if (tmpVf.back() == 'k' || tmpVf.back() == 'K') {
+                        Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e3;
+                    } else if (tmpVf.back() == 'u') {
+                        Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e-6;
+                    } else if (tmpVf.back() == 'n') {
+                        Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e-9;
+                    } else if (tmpVf.back() == 'm') {
+                        Vf = stod(tmpVf.substr(0, tmpVf.size() - 1)) * 1e-3;
+                    } else {
+                        Vf = stod(tmpVf);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+
+                try {
+                    if (tmpTD.back() == 'G') {
+                        TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e9;
+                    } else if (tmpTD.back() == 'M') {
+                        TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e6;
+                    } else if (tmpTD.back() == 'k' || tmpTD.back() == 'K') {
+                        TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e3;
+                    } else if (tmpTD.back() == 'u') {
+                        TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e-6;
+                    } else if (tmpTD.back() == 'n') {
+                        TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e-9;
+                    } else if (tmpTD.back() == 'm') {
+                        TD = stod(tmpTD.substr(0, tmpTD.size() - 1)) * 1e-3;
+                    } else {
+                        TD = stod(tmpTD);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+
+                try {
+                    if (tmpTR.back() == 'G') {
+                        TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e9;
+                    } else if (tmpTR.back() == 'M') {
+                        TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e6;
+                    } else if (tmpTR.back() == 'k' || tmpTR.back() == 'K') {
+                        TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e3;
+                    } else if (tmpTR.back() == 'u') {
+                        TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e-6;
+                    } else if (tmpTR.back() == 'n') {
+                        TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e-9;
+                    } else if (tmpTR.back() == 'm') {
+                        TR = stod(tmpTR.substr(0, tmpTR.size() - 1)) * 1e-3;
+                    } else {
+                        TR = stod(tmpTR);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+
+                try {
+                    if (tmpTF.back() == 'G') {
+                        TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e9;
+                    } else if (tmpTF.back() == 'M') {
+                        TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e6;
+                    } else if (tmpTF.back() == 'k' || tmpTF.back() == 'K') {
+                        TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e3;
+                    } else if (tmpTF.back() == 'u') {
+                        TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e-6;
+                    } else if (tmpTF.back() == 'n') {
+                        TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e-9;
+                    } else if (tmpTF.back() == 'm') {
+                        TF = stod(tmpTF.substr(0, tmpTF.size() - 1)) * 1e-3;
+                    } else {
+                        TF = stod(tmpTF);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+
+                try {
+                    if (tmpTOn.back() == 'G') {
+                        TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e9;
+                    } else if (tmpTOn.back() == 'M') {
+                        TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e6;
+                    } else if (tmpTOn.back() == 'k' || tmpTOn.back() == 'K') {
+                        TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e3;
+                    } else if (tmpTOn.back() == 'u') {
+                        TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e-6;
+                    } else if (tmpTOn.back() == 'n') {
+                        TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e-9;
+                    } else if (tmpTOn.back() == 'm') {
+                        TOn = stod(tmpTOn.substr(0, tmpTOn.size() - 1)) * 1e-3;
+                    } else {
+                        TOn = stod(tmpTOn);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+
+                try {
+                    if (tmpPeriod.back() == 'G') {
+                        period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e9;
+                    } else if (tmpPeriod.back() == 'M') {
+                        period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e6;
+                    } else if (tmpPeriod.back() == 'k' || tmpPeriod.back() == 'K') {
+                        period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e3;
+                    } else if (tmpPeriod.back() == 'u') {
+                        period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e-6;
+                    } else if (tmpPeriod.back() == 'n') {
+                        period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e-9;
+                    } else if (tmpPeriod.back() == 'm') {
+                        period = stod(tmpPeriod.substr(0, tmpPeriod.size() - 1)) * 1e-3;
+                    } else {
+                        period = stod(tmpPeriod);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+                if (type == "VPULSE") {
+                    cout << addPulseVoltageSource(name, node1, node2, Vi, Vf, TD, TR, TF, TOn,
+                                                             period, circuit);
+                }
+                if (type == "IPULSE") {
+                    cout << addPulseCurrentSource(name, node1, node2, Vi, Vf, TD, TR, TF, TOn,
+                                                             period, circuit);
+                }
+            }
+            if (type == "E" || type == "G") {
+                name = words[1];
+                node1 = words[2];
+                node2 = words[3];
+                string controlNode1 = words[4];
+                string controlNode2 = words[5];
+                string tmpGain = words[5];
+                double gain;
+                Node *cn1 = circuit->getCreateNode(controlNode1);
+                Node *cn2 = circuit->getCreateNode(controlNode2);
+                bool cn1Connected = false;
+                bool cn2Connected = false;
+                for (auto element: circuit->getElements()) {
+                    if (element->getFirstNode() == cn1 || element->getSecondNode() == cn1) {
+                        cn1Connected = true;
+                    }
+                    if (element->getFirstNode() == cn2 || element->getSecondNode() == cn2) {
+                        cn2Connected = true;
+                    }
+                }
+
+                if (!cn1Connected || !cn2Connected) {
+                    cout << "Error: " << controlNode1 << " and " << controlNode2 << " are not connected"
+                         << endl;
+                    continue;
+                }
+                try {
+                    if (tmpGain.back() == 'G') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e9;
+                    } else if (tmpGain.back() == 'M') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e6;
+                    } else if (tmpGain.back() == 'k' || tmpGain.back() == 'K') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e3;
+                    } else if (tmpGain.back() == 'u') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-6;
+                    } else if (tmpGain.back() == 'n') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-9;
+                    } else if (tmpGain.back() == 'm') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-3;
+                    } else {
+                        gain = stod(tmpGain);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+                if (gain == 0) {
+                    cout << "Error: Gain cannot be zero" << endl;
+                    continue;
+                }
+                if (type == "E") {
+                    cout << addVCVS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
+                }
+                if (type == "G") {
+                    cout << addVCCS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
+                }
+            }
+
+            if (type == "H" || type == "F") {
+                name = words[1];
+                node1 = words[2];
+                node2 = words[3];
+                string cElement = words[4];
+                string tmpGain = words[5];
+                double gain;
+
+                Element *controlElement = nullptr;
+                for (auto &element: circuit->getElements()) {
+                    if (element->getName() == cElement) {
+                        controlElement = element;
+                        break;
+                    }
+                }
+                if (controlElement == nullptr) {
+                    cout << "Error: " << cElement << " does not exist in the circuit" << endl;
+                    continue;
+                }
+                try {
+                    if (tmpGain.back() == 'G') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e9;
+                    } else if (tmpGain.back() == 'M') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e6;
+                    } else if (tmpGain.back() == 'k' || tmpGain.back() == 'K') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e3;
+                    } else if (tmpGain.back() == 'u') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-6;
+                    } else if (tmpGain.back() == 'n') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-9;
+                    } else if (tmpGain.back() == 'm') {
+                        gain = stod(tmpGain.substr(0, tmpGain.size() - 1)) * 1e-3;
+                    } else {
+                        gain = stod(tmpGain);
+                    }
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value for " << name << endl;
+                    continue;
+                }
+                if (gain == 0) {
+                    cout << "Error: Gain cannot be zero" << endl;
+                    continue;
+                }
+                if (type == "H") {
+                    cout << addCCVS(name, node1, node2, cElement, gain, circuit);
+                }
+                if (type == "F") {
+                    cout << addCCCS(name, node1, node2, cElement, gain, circuit);
+                }
+
+            }
+
+        }
+
+        fin.close();
+    }
+
+    void saveCircuitToFile(Circuit *circuit, string filename) {
+        const char* dir = "drafts";
+        struct stat sb;
+        if (stat(dir, &sb) == -1) {
+            if (_mkdir(dir) == -1) {
+                cout << "Error: Unable to create the 'drafts' folder.\n";
+            }
+        }
+
+        if (filename.find(".txt") == string::npos)
+            filename += ".txt";
+        string filePath = "drafts\\" + filename;
+
+        char fullPath[MAX_PATH];
+        if (GetFullPathName(filePath.c_str(), MAX_PATH, fullPath, NULL)) {
+            cout << "Full path to the saved file: " << fullPath << endl;
+        } else {
+            cout << "Error: Unable to determine the full path." << endl;
+        }
+
+        ofstream fout(filePath);
+        if (!fout.is_open()) {
+            cout << "Error: Could not open file '" + filePath + "' for writing.\n";
+        }
+
+        for (Element *e : circuit->getElements()) {
+            if (!e) continue;
+            string type = e->getType();
+            string name = e->getName();
+            string n1   = e->getFirstNode()->getName();
+            string n2   = e->getSecondNode()->getName();
+
+            if (type == "Resistor" || type == "Capacitor" || type == "Inductor") {
+                double value = e->getValue();
+                char prefix = (type == "Resistor" ? 'R' : type == "Capacitor" ? 'C' : 'L');
+                fout << prefix << " " << name << " " << n1 << " " << n2 << " " << value << "\n";
+            }
+            else if (type == "VDC") {
+                auto *vdc = dynamic_cast<DCVoltageSource *>(e);
+                if (vdc) {
+                    double value = vdc->getValue();
+                    fout << "V " << name << " " << n1 << " " << n2 << " " << value << "\n";
+                }
+            }
+            else if (type == "IDC") {
+                auto *idc = dynamic_cast<DCCurrentSource *>(e);
+                if (idc) {
+                    double value = idc->getValue();
+                    fout << "I " << name << " " << n1 << " " << n2 << " " << value << "\n";
+                }
+            }
+            else if (type == "Diode") {
+                fout << "D " << name << " " << n1 << " " << n2 << "\n";
+            }
+            else if (type == "Zener Diode") {
+                fout << "Z " << name << " " << n1 << " " << n2 << "\n";
+            }
+            else if (type == "VSIN") {
+                auto *sv = dynamic_cast<SinusoidalVoltageSource *>(e);
+                if (sv) {
+                    double amp  = sv->getValue();
+                    double freq = sv->getFrequency();
+                    double off  = sv->getOffset();
+                    fout << "VSIN " << name << " " << n1 << " " << n2
+                         << " " << amp << " " << freq << " " << off << "\n";
+                }
+            }
+            else if (type == "ISIN") {
+                auto *sc = dynamic_cast<SinusoidalCurrentSource *>(e);
+                if (sc) {
+                    double amp  = sc->getValue();
+                    double freq = sc->getFrequency();
+                    double off  = sc->getOffset();
+                    fout << "ISIN " << name << " " << n1 << " " << n2
+                         << " " << amp << " " << freq << " " << off << "\n";
+                }
+            }
+
+            else if (type == "VPULSE") {
+                auto *pv = dynamic_cast<PulseVoltageSource *>(e);
+                if (pv) {
+                    double V1     = pv->getV1();
+                    double V2     = pv->getV2();
+                    double TD     = pv->getTD();
+                    double TR     = pv->getTR();
+                    double TF     = pv->getTF();
+                    double TOn    = pv->getTOn();
+                    double period = pv->getPeriod();
+                    fout << "VPULSE " << name << " " << n1 << " " << n2
+                         << " " << V1 << " " << V2 << " " << TD << " " << TR
+                         << " " << TF << " " << TOn << " " << period << "\n";
+                }
+            }
+            else if (type == "IPULSE") {
+                auto *pc = dynamic_cast<PulseCurrentSource *>(e);
+                if (pc) {
+                    double I1     = pc->getI1();
+                    double I2     = pc->getI2();
+                    double TD     = pc->getTD();
+                    double TR     = pc->getTR();
+                    double TF     = pc->getTF();
+                    double TOn    = pc->getTOn();
+                    double period = pc->getPeriod();
+                    fout << "IPULSE " << name << " " << n1 << " " << n2
+                         << " " << I1 << " " << I2 << " " << TD << " " << TR
+                         << " " << TF << " " << TOn << " " << period << "\n";
+                }
+            }
+            else if (type == "VCVS") {
+                auto *vd = dynamic_cast<VCVS *>(e);
+                if (vd) {
+                    string cn1 = vd->getControlNode1()->getName();
+                    string cn2 = vd->getControlNode2()->getName();
+                    double gain = vd->getGain();
+                    fout << "E " << name << " " << n1 << " " << n2
+                         << " " << cn1 << " " << cn2 << " " << gain << "\n";
+                }
+            }
+            else if (type == "VCCS") {
+                auto *vc = dynamic_cast<VCCS *>(e);
+                if (vc) {
+                    string cn1 = vc->getControlNode1()->getName();
+                    string cn2 = vc->getControlNode2()->getName();
+                    double gain = vc->getGain();
+                    fout << "G " << name << " " << n1 << " " << n2
+                         << " " << cn1 << " " << cn2 << " " << gain << "\n";
+                }
+            }
+            else if (type == "CCVS") {
+                auto *cv = dynamic_cast<CCVS *>(e);
+                if (cv) {
+                    string ctrlName = cv->getcontrolElement()->getName();
+                    double gain     = cv->getGain();
+                    fout << "H " << name << " " << n1 << " " << n2
+                         << " " << ctrlName << " " << gain << "\n";
+                }
+            }
+            else if (type == "CCCS") {
+                auto *cc = dynamic_cast<CCCS *>(e);
+                if (cc) {
+                    string ctrlName = cc->getcontrolElement()->getName();
+                    double gain     = cc->getGain();
+                    fout << "F " << name << " " << n1 << " " << n2
+                         << " " << ctrlName << " " << gain << "\n";
+                }
+            }
+        }
+
+        fout.close();
+        cout << "Circuit saved to '" + filePath + "'.\n";
+    }
+
 };
+
 
 class View {
 private:
     Circuit *circuit;
     Controller controller;
+    string loadedFilename;
 public:
     void run() {
         circuit = new Circuit();
@@ -938,6 +1589,8 @@ public:
         regex addCCVS(R"(^\s*add\s+H(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
         regex addCCCS(R"(^\s*add\s+F(\w+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?[GMKkmnp]?)\s*$)");
         regex preanalysischeck(R"(^\s*pre-analysis\s+check\s*$)");
+        regex save_file(R"(^\s*save\s+file\s+(\w+)\s*$)");
+        regex show_existing_schematics(R"(^\s*show\s+existing\s+schematics\s*$)");
         regex exit(R"(^exit$)");
         while (true) {
             getline(cin, input);
@@ -982,10 +1635,18 @@ public:
                             break;
                     }
                 }
-                if (match[1] == "VoltageSource")
+                if (match[1] == "VoltageSource") {
                     cout << controller.addDCVoltageSource(name, node1, node2, value, circuit);
-                else
+                    if (!loadedFilename.empty()) {
+                        controller.saveCircuitToFile(circuit, loadedFilename);
+                    }
+                }
+                else{
                     cout << controller.addDCCurrentSource(name, node1, node2, value, circuit);
+                    if (!loadedFilename.empty()) {
+                        controller.saveCircuitToFile(circuit, loadedFilename);
+                    }
+                }
             } else if (regex_match(input, match, addSINSource)) {
                 if (match[1] != "V" && match[1] != "I") {
                     cout << "Element " << match[1] << " not found in library\n";
@@ -1050,12 +1711,18 @@ public:
                     cout << "Frequency can not be Zero or Negative!\n";
                     continue;
                 }
-                if (match[1] == "V")
-                    cout << controller.addSinusoidalVoltageSource(name, node1, node2, value[1], value[2], value[0],
-                                                                  circuit);
-                else
-                    cout << controller.addSinusoidalCurrentSource(name, node1, node2, value[1], value[2], value[0],
-                                                                  circuit);
+                if (match[1] == "V") {
+                    cout << controller.addSinusoidalVoltageSource(name, node1, node2, value[1], value[2], value[0],circuit);
+                    if (!loadedFilename.empty()) {
+                        controller.saveCircuitToFile(circuit, loadedFilename);
+                    }
+                }
+                else {
+                    cout << controller.addSinusoidalCurrentSource(name, node1, node2, value[1], value[2], value[0],circuit);
+                    if (!loadedFilename.empty()) {
+                        controller.saveCircuitToFile(circuit, loadedFilename);
+                    }
+                }
             } else if (regex_match(input, match, addPULSESource)) {
                 if (match[1] != "V" && match[1] != "I") {
                     cout << "Element " << match[1] << " not found in library\n";
@@ -1126,12 +1793,20 @@ public:
                     cout << "Period shorter than enough!\n";
                     continue;
                 }
-                if (match[1] == "V")
+                if (match[1] == "V") {
                     cout << controller.addPulseVoltageSource(name, node1, node2, value[0], value[1], value[2], value[3],
                                                              value[4], value[5], value[6], circuit);
-                else
+                    if (!loadedFilename.empty()) {
+                        controller.saveCircuitToFile(circuit, loadedFilename);
+                    }
+                }
+                else {
                     cout << controller.addPulseCurrentSource(name, node1, node2, value[0], value[1], value[2], value[3],
                                                              value[4], value[5], value[6], circuit);
+                    if (!loadedFilename.empty()) {
+                        controller.saveCircuitToFile(circuit, loadedFilename);
+                    }
+                }
             } else if (regex_match(input, match, add_element)) {
                 if (match[1] != "R" && match[1] != "L" && match[1] != "C") {
                     cout << "Element " << match[1] << " not found in library\n";
@@ -1178,12 +1853,18 @@ public:
                     }
                 }
                 cout << controller.addNewElement(node1, node2, name, value, circuit);
+                if (!loadedFilename.empty()) {
+                    controller.saveCircuitToFile(circuit, loadedFilename);
+                }
             } else if (regex_match(input, match, remove_element)) {
                 if (match[1] != "R" && match[1] != "L" && match[1] != "C" && match[1] != "D") {
                     cout << "Element " << match[1] << " not found in library\n";
                     continue;
                 }
                 cout << controller.removeElement(match[1].str() + match[2].str(), circuit);
+                if (!loadedFilename.empty()) {
+                    controller.saveCircuitToFile(circuit, loadedFilename);
+                }
             } else if (regex_match(input, match, add_diode)) {
                 string name = match[1].str() + match[2].str();
                 string node1 = match[3];
@@ -1198,8 +1879,12 @@ public:
                     cout << "Error: Element " << name << " not found in library\n";
                     continue;
                 }
-                if (model == "D" || model == "Z")
+                if (model == "D" || model == "Z") {
                     cout << controller.addDiode(node1, node2, name, model, circuit);
+                    if (!loadedFilename.empty()) {
+                        controller.saveCircuitToFile(circuit, loadedFilename);
+                    }
+                }
             } else if (regex_match(input, match, add_ground)) {
                 if (match[1] != "GND") {
                     cout << "Error: Element " << match[1] << " not found in library\n";
@@ -1270,8 +1955,7 @@ public:
 
 
                     string type = words[0];
-                    if (type == "R" || type == "L" || type == "C" || type == "I" || type == "V" || type == "D" ||
-                        type == "Z") {
+                    if (type == "R" || type == "L" || type == "C" || type == "I" || type == "V") {
                         name = words[1];
                         node1 = words[2];
                         node2 = words[3];
@@ -1313,20 +1997,30 @@ public:
                         if (type == "R" || type == "C" || type == "L") {
                             cout << controller.addNewElement(node1, node2, name, value, circuit);
 
-                        } else if (type == "D" || type == "Z") {
-                            string model;
-                            if (type == "D") {
-                                model = "D";
-                            }
-                            if (type == "Z") {
-                                model = "Z";
-                            }
-                            cout << controller.addDiode(node1, node2, name, model, circuit);
                         } else if (type == "V") {
                             cout << controller.addDCVoltageSource(name, node1, node2, value, circuit);
                         } else if (type == "I") {
                             cout << controller.addDCCurrentSource(name, node1, node2, value, circuit);
                         }
+                    }
+                    if (type == "D" || type == "Z"){
+                        name = words[1];
+                        node1 = words[2];
+                        node2 = words[3];
+                        if (node1 == "GND") {
+                            controller.addGround(node1, circuit);
+                        }
+                        if (node2 == "GND") {
+                            controller.addGround(node2, circuit);
+                        }
+                        string model;
+                        if (type == "D") {
+                            model = "D";
+                        }
+                        if (type == "Z") {
+                            model = "Z";
+                        }
+                        cout << controller.addDiode(node1, node2, name, model, circuit);
                     }
                     if (type == "VSIN" || type == "ISIN") {
                         name = words[1];
@@ -1741,6 +2435,9 @@ public:
                     continue;
                 }
                 cout << controller.addVCVS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
+                if (!loadedFilename.empty()) {
+                    controller.saveCircuitToFile(circuit, loadedFilename);
+                }
             } else if (regex_match(input, match, addVCCS)) {
                 string name = 'G'+match[1].str();
                 string node1 = match[2].str();
@@ -1791,6 +2488,9 @@ public:
                     continue;
                 }
                 cout << controller.addVCCS(name, node1, node2, controlNode1, controlNode2, gain, circuit);
+                if (!loadedFilename.empty()) {
+                    controller.saveCircuitToFile(circuit, loadedFilename);
+                }
             } else if (regex_match(input, match, addCCVS)) {
                 string name = 'H'+match[1].str();
                 string node1 = match[2].str();
@@ -1835,6 +2535,9 @@ public:
                     continue;
                 }
                 cout << controller.addCCVS(name, node1, node2, cElement, gain, circuit);
+                if (!loadedFilename.empty()) {
+                    controller.saveCircuitToFile(circuit, loadedFilename);
+                }
             } else if (regex_match(input, match, addCCCS)) {
                 string name = 'F'+match[1].str();
                 string node1 = match[2].str();
@@ -1879,7 +2582,59 @@ public:
                     continue;
                 }
                 cout << controller.addCCCS(name, node1, node2, cElement, gain, circuit);
-            } else if (regex_match(input, match, preanalysischeck)) {
+                if (!loadedFilename.empty()) {
+                    controller.saveCircuitToFile(circuit, loadedFilename);
+                }
+            }
+
+            else if (regex_match(input, match, save_file)) {
+                string name = match[1].str();
+                name += ".txt";
+                controller.saveCircuitToFile(circuit, name);
+            }
+
+            else if (regex_match(input, match, show_existing_schematics)) {
+                const char* dirname = "drafts";
+                DIR* dirp = opendir(dirname);
+                if (!dirp) {
+                    cout << "Error: Could not open the 'drafts' folder\n";
+                } else {
+                    vector<string> files;
+                    struct dirent* entry;
+                    while ((entry = readdir(dirp)) != nullptr) {
+                        string name = entry->d_name;
+                        if (name == "." || name == "..")
+                            continue;
+                        files.push_back(name);
+                    }
+                    closedir(dirp);
+
+                    if (files.empty()) {
+                        cout << "No existing schematics found in 'drafts'.\n";
+                    } else {
+                        cout << "-choose existing schematic:\n";
+                        for (int i = 0; i < files.size(); ++i) {
+                            cout << "  " << (i+1) << "-" << files[i] << "\n";
+                        }
+
+                        int choice = 0;
+                        if (!(cin >> choice) || choice < 1 || choice > (int)files.size()) {
+                            cout << "-Error : Inappropriate input\n";
+                            string tmp;
+                            getline(cin, tmp);
+                        } else {
+                            string selectedName = files[choice - 1];
+                            string fullPath = string(dirname) + "\\" + selectedName;
+                            controller.loadCircuit(circuit, fullPath);
+                            loadedFilename = selectedName;
+                            string tmp;
+                            getline(cin, tmp);
+                        }
+                    }
+                }
+            }
+
+            else if (regex_match(input, match, preanalysischeck)) {
                 controller.preAnalysisErrs(circuit);
             } else if (regex_match(input, match, exit)) {
                 cout << "Bye Bye!\n";
@@ -1893,5 +2648,6 @@ public:
 int main(){
     View view;
     view.run();
+
     return 0;
 }

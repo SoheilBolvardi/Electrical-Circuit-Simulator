@@ -15,11 +15,12 @@ class Element;
 
 class Node {
 private:
+    bool isGround;
     string name;
     double voltage;
     vector<Element *> connected_elements;
 public:
-    Node(string name_) : name(name_) {}
+    Node(string name_) : name(name_), isGround(false) {}
 
     vector<Element *> getConnectedElements() { return connected_elements; }
 
@@ -40,6 +41,49 @@ public:
     }
 
     double getVoltage() { return voltage; }
+
+    void setGround(){isGround=true;}
+
+    bool isGroundd() {return isGround;}
+};
+
+class Element {
+protected:
+    string name;
+    double value;
+    Node *node1;
+    Node *node2;
+public:
+    Element(string name_, double value_, Node *n1, Node *n2) :
+            name(name_), value(value_), node1(n1), node2(n2) {}
+
+    string getName() {
+        return name;
+    }
+
+    virtual string getType() = 0;
+    virtual string getCategory() {return "Generic";}
+
+    virtual void stamp(vector<vector<double>>& A,
+                       vector<double>& b,
+                       map<string, int>& nodeToIndex,
+                       int& voltageIndex,
+                       map <Element*, int>& currentIndexmap) = 0;
+
+    double getValue() { return value; }
+
+    Node *getFirstNode() { return node1; }
+
+    Node *getSecondNode() { return node2; }
+    virtual double getCurrent() {
+
+    }
+
+    virtual double getVoltage() {
+
+    }
+
+    virtual ~Element() = default;
 };
 
 class Circuit {
@@ -48,10 +92,15 @@ protected:
     vector<Node *> nodes;
     map<string, Node *> node_access;
     Node *gnd=nullptr;
+    map <Element*, int> currentIndexmap;
+    vector<vector<double>> A;
+    vector <double> b;
 public:
     vector<Element *> &getElements() { return elements; }
 
     map<string, Node *> getNodeAccess() { return node_access; }
+    map<string, int> nodetoindex;
+    vector <Node*> ordernodes;
 
     Node *getCreateNode(string name) {
         if (!node_access.count(name)) {
@@ -100,38 +149,49 @@ public:
         return true;
     }
 
-};
-
-class Element {
-protected:
-    string name;
-    double value;
-    Node *node1;
-    Node *node2;
-public:
-    Element(string name_, double value_, Node *n1, Node *n2) :
-            name(name_), value(value_), node1(n1), node2(n2) {}
-
-    string getName() {
-        return name;
+    void BuildMNA(){
+        nodetoindex.clear();
+        ordernodes.clear();
+        currentIndexmap.clear();
+        int index=0;
+        for (Node* node : nodes) {
+            cout<<node->isGroundd()<<endl;
+            if (!node->isGroundd()) {
+                if (nodetoindex.count(node->getName()) == 0) {
+                    nodetoindex[node->getName()] = index;
+                    ordernodes.push_back(node);
+                    index++;
+                }
+            }
+        }
+        int N= index;
+        int M=0;
+        for(auto element: elements){
+            if(element->getCategory() == "Voltage Source")
+                M++;
+        }
+        int size=M+N;
+        vector<vector<double>> A(size, vector<double>(size, 0.0));
+        vector <double> b(size, 0.0);
+        int voltageindex = nodetoindex.size();
+        for(auto element: elements){
+            if(element->getCategory()=="Voltage Source" || element->getCategory()=="Controlled Voltage Source")
+                currentIndexmap[element] = voltageindex++;
+        }
+        for(auto element: elements){
+            cout<<"SIZE: "<<nodetoindex.size()<<"      "<<element->getName()<<endl;
+            if(!element)
+                continue;
+            element->stamp(A,b, nodetoindex, voltageindex, currentIndexmap);
+            cout<<"SIZE: "<<nodetoindex.size()<<"      "<<element->getName()<<endl;
+        }
+        this->A=A;
+        this->b=b;
     }
 
-    virtual string getType() = 0;
+    vector<vector<double>> getMatrix() const { return A; }
+    vector<double> getRHS() const { return b; }
 
-    double getValue() { return value; }
-
-    Node *getFirstNode() { return node1; }
-
-    Node *getSecondNode() { return node2; }
-    virtual double getCurrent() {
-
-    }
-
-    virtual double getVoltage() {
-
-    }
-
-    virtual ~Element() = default;
 };
 
 class Resistor : public Element {
@@ -146,6 +206,36 @@ public:
 
     double getVoltage() override {
 
+    }
+
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map <Element*, int>& currentIndexmap) override {
+        int i = nodeToIndex[getFirstNode()->getName()];
+        int j = nodeToIndex[getSecondNode()->getName()];
+        double g = 1.0 / getValue();
+        string n1= node1->getName();
+        string n2= node2->getName();
+        bool hasN1 = !node1->isGroundd();
+        bool hasN2 = !node2->isGroundd();
+        cout<<hasN1<<"   "<<hasN2<<endl;
+
+        if (hasN1 && hasN2) {
+            int i = nodeToIndex[n1];
+            int j = nodeToIndex[n2];
+            A[i][i] += g;
+            A[j][j] += g;
+            A[i][j] -= g;
+            A[j][i] -= g;
+        } else if (hasN1) {
+            int i = nodeToIndex[n1];
+            A[i][i] += g;
+        } else if (hasN2) {
+            int j = nodeToIndex[n2];
+            A[j][j] += g;
+        }
     }
 };
 
@@ -163,6 +253,13 @@ public:
     double getVoltage() override {
 
     }
+
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map <Element*, int>& currentIndexmap) override {
+    }
 };
 
 class Inductor : public Element {
@@ -179,6 +276,20 @@ public:
     double getVoltage() override {
 
     }
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map <Element*, int>& currentIndexmap) override {
+        int i = nodeToIndex[getFirstNode()->getName()];
+        int j = nodeToIndex[getSecondNode()->getName()];
+        double g = 1e9;
+
+        A[i][i] += g;
+        A[j][j] += g;
+        A[i][j] -= g;
+        A[j][i] -= g;
+    }
 };
 
 class Diode : public Element {
@@ -192,6 +303,21 @@ public:
 
     virtual double calculateCurrent(double voltage) {
 
+    }
+
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map <Element*, int>& currentIndexmap) override {
+        int i = nodeToIndex[getFirstNode()->getName()];
+        int j = nodeToIndex[getSecondNode()->getName()];
+        double g = 1e9;
+
+        A[i][i] += g;
+        A[j][j] += g;
+        A[i][j] -= g;
+        A[j][i] -= g;
     }
 };
 
@@ -209,6 +335,12 @@ public:
     double calculateCurrent(double voltage) override {
 
     }
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map <Element*, int>& currentIndexmap) override {
+    }
 };
 
 class VoltageSource : public Element {
@@ -219,6 +351,28 @@ public:
     virtual double getVoltage(double time) = 0;
 
     string getType() override { return "Voltage Source"; }
+    string getCategory() override{return "Voltage Source";}
+
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map <Element*, int>& currentIndexmap) override {
+        bool hasN1 = !node1->isGroundd();
+        bool hasN2 = !node2->isGroundd();
+        int vIdx = currentIndexmap[this];
+        if (hasN1) {
+            int i = nodeToIndex[node1->getName()];
+            A[i][vIdx] -= 1;
+            A[vIdx][i] -= 1;
+        }
+        if (hasN2) {
+            int j = nodeToIndex[node2->getName()];
+            A[j][vIdx] += 1;
+            A[vIdx][j] += 1;
+        }
+        b[vIdx] += getValue();
+    }
 };
 
 class DCVoltageSource : public VoltageSource {
@@ -306,6 +460,21 @@ public:
     virtual double getCurrent(double time) = 0;
 
     string getType() override { return "Current Source"; }
+
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map<Element*, int>& currentIndexMap) override {
+        bool hasN1 = nodeToIndex.count(node1->getName());
+        bool hasN2 = nodeToIndex.count(node2->getName());
+        double I = getCurrent(0);
+        if (hasN1)
+            b[nodeToIndex[node1->getName()]] -= I;
+        if (hasN2)
+            b[nodeToIndex[node2->getName()]] += I;
+
+    }
 };
 
 class DCCurrentSource : public CurrentSource {
@@ -398,6 +567,8 @@ public:
     Node* getControlNode2() { return controlNode2; }
     double getGain() { return gain; }
 
+    string getCategory() override{return "Controlled Voltage Source";}
+
     double getVoltage(double time) override {
         double controlVoltage = controlNode1->getVoltage() - controlNode2->getVoltage();
         return gain * controlVoltage;
@@ -405,6 +576,37 @@ public:
 
     string getType() override {
         return "VCVS";
+    }
+
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map <Element*, int>& currentIndexmap) override {
+        if (!currentIndexmap.count(this)) return;
+        int vIdx = currentIndexmap[this];
+        bool hasN1 = !node1->isGroundd();
+        bool hasN2 = !node2->isGroundd();
+        bool hasN3 = !controlNode1->isGroundd();
+        bool hasN4 = !controlNode2->isGroundd();
+
+        int i = hasN1 ? nodeToIndex[node1->getName()] : -1;
+        int j = hasN2 ? nodeToIndex[node2->getName()] : -1;
+        int m = hasN3 ? nodeToIndex[controlNode1->getName()] : -1;
+        int n = hasN4 ? nodeToIndex[controlNode2->getName()] : -1;
+
+        if (hasN1) {
+            A[i][vIdx] -= 1;
+            A[vIdx][i] -= 1;
+        }
+        if (hasN2) {
+            A[j][vIdx] += 1;
+            A[vIdx][j] += 1;
+        }
+        if (hasN3 && hasN4) {
+            A[vIdx][m] -= gain;
+            A[vIdx][n] += gain;
+        }
     }
 };
 
@@ -426,6 +628,34 @@ public:
     string getType() override {
         return "CCVS";
     }
+
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map<Element*, int>& currentIndexMap) override {
+        int vIdx = currentIndexMap[this];
+        currentIndexMap[this] = vIdx;
+        Element* control = getcontrolElement();
+        int ctrlIdx = currentIndexMap[control];
+        double gain = getGain();
+        bool hasN1 = !node1->isGroundd();
+        bool hasN2 = !node2->isGroundd();
+        int i = hasN1 ? nodeToIndex[node1->getName()] : -1;
+        int j = hasN2 ? nodeToIndex[node2->getName()] : -1;
+
+        if (hasN1) {
+            A[i][vIdx] -= 1;
+            A[vIdx][i] -= 1;
+        }
+        if (hasN2) {
+            A[j][vIdx] += 1;
+            A[vIdx][j] += 1;
+        }
+
+        A[vIdx][ctrlIdx] -= gain;
+    }
+
 };
 
 class VCCS : public CurrentSource {
@@ -446,8 +676,31 @@ public:
         return gain * controlVoltage;
     }
 
+    string getCategory() override{return "Controlled Voltage Source";}
+
     string getType() override {
         return "VCCS";
+    }
+
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map <Element*, int>& currentIndexmap) override {
+        bool hasN1 = !node1->isGroundd();
+        bool hasN2 = !node2->isGroundd();
+        bool hasN3 = !controlNode1->isGroundd();
+        bool hasN4 = !controlNode2->isGroundd();
+
+        int i = hasN1 ? nodeToIndex[node1->getName()] : -1;
+        int j = hasN2 ? nodeToIndex[node2->getName()] : -1;
+        int m = hasN3 ? nodeToIndex[controlNode1->getName()] : -1;
+        int n = hasN4 ? nodeToIndex[controlNode2->getName()] : -1;
+
+        if (hasN1 && hasN3) A[i][m] += gain;
+        if (hasN1 && hasN4) A[i][n] -= gain;
+        if (hasN2 && hasN3) A[j][m] -= gain;
+        if (hasN2 && hasN4) A[j][n] += gain;
     }
 };
 
@@ -470,6 +723,25 @@ public:
 
     string getType() override {
         return "CCCS";
+    }
+
+    void stamp(vector<vector<double>>& A,
+               vector<double>& b,
+               map<string, int>& nodeToIndex,
+               int& voltageIndex,
+               map<Element*, int>& currentIndexMap) override {
+        Element* control = getcontrolElement();
+
+        int ctrlIdx = currentIndexMap[control];
+        double gain = getGain();
+        bool hasN1 = !node1->isGroundd();
+        bool hasN2 = !node2->isGroundd();
+
+        int i = hasN1 ? nodeToIndex[node1->getName()] : -1;
+        int j = hasN2 ? nodeToIndex[node2->getName()] : -1;
+
+        if (hasN1) A[i][ctrlIdx] += gain;
+        if (hasN2) A[j][ctrlIdx] -= gain;
     }
 };
 
@@ -582,6 +854,7 @@ public:
         if(circuit->getGround())
             return "Error! ground node already exists in the circuit\n";
         Node *n1 = circuit->getCreateNode(node);
+        n1->setGround();
         circuit->setGround(node);
         return "Ground added to node " + node +" successfully!\n";
     }
@@ -1551,6 +1824,31 @@ public:
         cout << "Circuit saved to '" + filePath + "'.\n";
     }
 
+    void checkMatrix(Circuit* circuit) {
+        circuit->BuildMNA();
+        const auto& A = circuit->getMatrix();
+        const auto& b = circuit->getRHS();
+        int n = A.size();
+        if (n == 0) {
+            cout << "MNA matrix is empty!\n";
+            return;
+        }
+
+        cout << "MNA Matrix A:\n";
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < A[i].size(); ++j) {
+                cout << setw(10) << fixed << setprecision(3) << A[i][j] << " ";
+            }
+            cout << "\n";
+        }
+
+        cout << "\nVector b:\n";
+        for (int i = 0; i < b.size(); ++i) {
+            cout << "b[" << i << "] = " << fixed << setprecision(3) << b[i] << "\n";
+        }
+        cout << "\n";
+    }
+
 };
 
 
@@ -1591,6 +1889,7 @@ public:
         regex preanalysischeck(R"(^\s*pre-analysis\s+check\s*$)");
         regex save_file(R"(^\s*save\s+file\s+(\w+)\s*$)");
         regex show_existing_schematics(R"(^\s*show\s+existing\s+schematics\s*$)");
+        regex check_matrix(R"(^\s*check\s+matrix\s*$)");
         regex exit(R"(^exit$)");
         while (true) {
             getline(cin, input);
@@ -2633,9 +2932,10 @@ public:
                     }
                 }
             }
-
             else if (regex_match(input, match, preanalysischeck)) {
                 controller.preAnalysisErrs(circuit);
+            } else if (regex_match(input, match, check_matrix)){
+                controller.checkMatrix(circuit);
             } else if (regex_match(input, match, exit)) {
                 cout << "Bye Bye!\n";
                 return;
@@ -2648,6 +2948,5 @@ public:
 int main(){
     View view;
     view.run();
-
     return 0;
 }

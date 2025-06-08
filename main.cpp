@@ -9,7 +9,7 @@
 
 using namespace std;
 
-vector<double> gaussianElimination(const vector<vector<double>>& A_in, const vector<double>& b_in) {
+vector<double> gaussianElimination(const vector<vector<double>> &A_in, const vector<double> &b_in) {
     int n = b_in.size();
     vector<vector<double>> A = A_in;
     vector<double> b = b_in;
@@ -86,9 +86,9 @@ public:
 
     double getVoltage() { return voltage; }
 
-    void setGround(){isGround=true;}
+    void setGround() { isGround = true; }
 
-    bool isGroundd() {return isGround;}
+    bool isGroundd() { return isGround; }
 };
 
 class Element {
@@ -97,8 +97,8 @@ protected:
     double value;
     Node *node1;
     Node *node2;
-    double current=0;
-    double currenttime=0;
+    double current = 0;
+    double currenttime = 0;
 public:
     Element(string name_, double value_, Node *n1, Node *n2) :
             name(name_), value(value_), node1(n1), node2(n2) {}
@@ -112,26 +112,28 @@ public:
     }
 
     virtual string getType() = 0;
-    virtual string getCategory() {return "Generic";}
 
-    virtual void stamp(vector<vector<double>>& A,
-                       vector<double>& b,
-                       map<string, int>& nodeToIndex,
-                       int& voltageIndex,
-                       map <Element*, int>& currentIndexmap) = 0;
+    virtual string getCategory() { return "Generic"; }
+
+    virtual void stamp(vector<vector<double>> &A,
+                       vector<double> &b,
+                       map<string, int> &nodeToIndex,
+                       int &voltageIndex,
+                       map<Element *, int> &currentIndexmap) = 0;
 
     virtual double getValue() { return value; }
 
     Node *getFirstNode() { return node1; }
 
     Node *getSecondNode() { return node2; }
-    virtual double getCurrent() {return current;}
+
+    virtual double getCurrent() { return current; }
 
     virtual double getVoltage() {}
 
-    virtual void setCurrent(double i) {current=i;}
+    virtual void setCurrent(double i) { current = i; }
 
-    virtual void updateTime(double t){currenttime=t;}
+    virtual void updateTime(double t) { currenttime = t; }
 
     virtual ~Element() = default;
 };
@@ -141,16 +143,18 @@ protected:
     vector<Element *> elements;
     vector<Node *> nodes;
     map<string, Node *> node_access;
-    Node *gnd=nullptr;
+    Node *gnd = nullptr;
     vector<vector<double>> A;
-    vector <double> b;
+    vector<double> b;
 public:
-    map <Element*, int> currentIndexmap;
+    map<Element *, int> currentIndexmap;
+
     vector<Element *> &getElements() { return elements; }
 
     map<string, Node *> getNodeAccess() { return node_access; }
+
     map<string, int> nodetoindex;
-    vector <Node*> ordernodes;
+    vector<Node *> ordernodes;
 
     Node *getCreateNode(string name) {
         if (!node_access.count(name)) {
@@ -165,24 +169,25 @@ public:
         elements.push_back(element);
     }
 
-    Node* getGround() {return gnd;}
-    vector<Node *> getNodes() {return nodes;}
+    Node *getGround() { return gnd; }
 
-    bool setGround(string name){
-        if(!node_access.count(name))
+    vector<Node *> getNodes() { return nodes; }
+
+    bool setGround(string name) {
+        if (!node_access.count(name))
             return false;
-        gnd=node_access[name];
+        gnd = node_access[name];
         return true;
     }
 
-    bool removeGround(string name){
-        if(gnd!=node_access[name])
+    bool removeGround(string name) {
+        if (gnd != node_access[name])
             return false;
-        gnd=nullptr;
+        gnd = nullptr;
         return true;
     }
 
-    bool renameNode(string old_name, string new_name, string& err) {
+    bool renameNode(string old_name, string new_name, string &err) {
         if (node_access.find(old_name) == node_access.end()) {
             err = "ERROR: Node " + old_name + " does not exist in the circuit\n";
             return false;
@@ -191,7 +196,7 @@ public:
             err = "ERROR: Node name " + new_name + " already exists\n";
             return false;
         }
-        Node* node = node_access[old_name];
+        Node *node = node_access[old_name];
         node->setName(new_name);
         node_access.erase(old_name);
         node_access[new_name] = node;
@@ -199,12 +204,12 @@ public:
         return true;
     }
 
-    void BuildMNA(){
+    void BuildMNA() {
         nodetoindex.clear();
         ordernodes.clear();
         currentIndexmap.clear();
-        int index=0;
-        for (Node* node : nodes) {
+        int index = 0;
+        for (Node *node: nodes) {
             if (!node->isGroundd()) {
                 if (nodetoindex.count(node->getName()) == 0) {
                     nodetoindex[node->getName()] = index;
@@ -213,32 +218,32 @@ public:
                 }
             }
         }
-        int N= index;
-        int M=0;
-        for(auto element: elements){
-            if(element->getCategory() == "Voltage Source")
+        int N = index;
+        int M = 0;
+        for (auto element: elements) {
+            if (element->getCategory() == "Voltage Source")
                 M++;
         }
-        int size=M+N;
+        int size = M + N;
         vector<vector<double>> A(size, vector<double>(size, 0.0));
-        vector <double> b(size, 0.0);
+        vector<double> b(size, 0.0);
         int voltageindex = nodetoindex.size();
-        for(auto element: elements){
-            if(element->getCategory()=="Voltage Source" || element->getCategory()=="Controlled Voltage Source")
+        for (auto element: elements) {
+            if (element->getCategory() == "Voltage Source" || element->getCategory() == "Controlled Voltage Source")
                 currentIndexmap[element] = voltageindex++;
         }
-        for(auto element: elements){
-            if(!element)
+        for (auto element: elements) {
+            if (!element)
                 continue;
-            element->stamp(A,b, nodetoindex, voltageindex, currentIndexmap);
+            element->stamp(A, b, nodetoindex, voltageindex, currentIndexmap);
         }
-        this->A=A;
-        this->b=b;
+        this->A = A;
+        this->b = b;
     }
 
     void reset() {
-        for (auto e : elements) delete e;
-        for (auto n : nodes) delete n;
+        for (auto e: elements) delete e;
+        for (auto n: nodes) delete n;
 
         elements.clear();
         nodes.clear();
@@ -250,6 +255,7 @@ public:
     }
 
     vector<vector<double>> getMatrix() const { return A; }
+
     vector<double> getRHS() const { return b; }
 
 };
@@ -257,6 +263,7 @@ public:
 class Resistor : public Element {
 public:
     double voltage;
+
     Resistor(string name_, double value_, Node *n1, Node *n2)
             : Element(name_, value_, n1, n2) {}
 
@@ -267,20 +274,21 @@ public:
         voltage = node1->getVoltage() - node2->getVoltage();
         return voltage;
     }
+
     double getCurrent() override {
-        return (node1->getVoltage() - node2->getVoltage())/value;
+        return (node1->getVoltage() - node2->getVoltage()) / value;
     }
 
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map <Element*, int>& currentIndexmap) override {
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexmap) override {
         int i = nodeToIndex[getFirstNode()->getName()];
         int j = nodeToIndex[getSecondNode()->getName()];
         double g = 1.0 / getValue();
-        string n1= node1->getName();
-        string n2= node2->getName();
+        string n1 = node1->getName();
+        string n2 = node2->getName();
         bool hasN1 = !node1->isGroundd();
         bool hasN2 = !node2->isGroundd();
 
@@ -316,11 +324,11 @@ public:
 
     }
 
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map <Element*, int>& currentIndexmap) override {
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexmap) override {
     }
 };
 
@@ -332,22 +340,23 @@ public:
     string getType() override { return "Inductor"; }
 
     double getCurrent() override {
-        double dv= node1->getVoltage()-node2->getVoltage();
+        double dv = node1->getVoltage() - node2->getVoltage();
         return 1e9 * dv;
     }
 
     double getVoltage() override {
 
     }
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map <Element*, int>& currentIndexmap) override {
+
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexmap) override {
         int i = nodeToIndex[getFirstNode()->getName()];
         int j = nodeToIndex[getSecondNode()->getName()];
-        string n1= node1->getName();
-        string n2= node2->getName();
+        string n1 = node1->getName();
+        string n2 = node2->getName();
         double g = 1e9;
         bool hasN1 = !node1->isGroundd();
         bool hasN2 = !node2->isGroundd();
@@ -381,11 +390,11 @@ public:
 
     }
 
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map <Element*, int>& currentIndexmap) override {
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexmap) override {
         int i = nodeToIndex[getFirstNode()->getName()];
         int j = nodeToIndex[getSecondNode()->getName()];
         double g = 1e9;
@@ -411,17 +420,18 @@ public:
     double calculateCurrent(double voltage) override {
 
     }
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map <Element*, int>& currentIndexmap) override {
+
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexmap) override {
     }
 };
 
 class VoltageSource : public Element {
 protected:
-    double currenttime=0;
+    double currenttime = 0;
 public:
     VoltageSource(string name_, double value_, Node *n1, Node *n2)
             : Element(name_, value_, n1, n2) {}
@@ -429,13 +439,14 @@ public:
     virtual double getVoltage(double time) = 0;
 
     string getType() override { return "Voltage Source"; }
-    string getCategory() override{return "Voltage Source";}
 
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map <Element*, int>& currentIndexmap) override {
+    string getCategory() override { return "Voltage Source"; }
+
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexmap) override {
         bool hasN1 = !node1->isGroundd();
         bool hasN2 = !node2->isGroundd();
         int vIdx = currentIndexmap[this];
@@ -451,6 +462,7 @@ public:
         }
         b[vIdx] += getValue();
     }
+
     double getCurrent() override {
         return current;
     }
@@ -466,6 +478,7 @@ public:
     }
 
     string getType() override { return "VDC"; }
+
     double getCurrent() override {
         return current;
     }
@@ -485,18 +498,20 @@ public:
     }
 
     double getValue() override {
-        return value*sin(2 * M_PI * frequency * currenttime) + offset;
+        return value * sin(2 * M_PI * frequency * currenttime) + offset;
     }
 
-    double getFrequency(){return frequency;}
+    double getFrequency() { return frequency; }
 
-    double getOffset(){return offset;}
+    double getOffset() { return offset; }
 
     string getType() override { return "VSIN"; }
+
     double getCurrent() override {
         return current;
     }
-    void updateTime(double t) override {currenttime=t;}
+
+    void updateTime(double t) override { currenttime = t; }
 };
 
 class PulseVoltageSource : public VoltageSource {
@@ -510,16 +525,24 @@ private:
     double period;
 
 public:
-    PulseVoltageSource(string name_, double V1_, double V2_, double TD_, double TR_, double TF_, double TOn_, double period_, Node *n1, Node *n2)
-            : VoltageSource(name_, V1_, n1, n2), V1(V1_), V2(V2_), TD(TD_), TR(TR_), TF(TF_), TOn(TOn_), period(period_) {}
+    PulseVoltageSource(string name_, double V1_, double V2_, double TD_, double TR_, double TF_, double TOn_,
+                       double period_, Node *n1, Node *n2)
+            : VoltageSource(name_, V1_, n1, n2), V1(V1_), V2(V2_), TD(TD_), TR(TR_), TF(TF_), TOn(TOn_),
+              period(period_) {}
 
 
-    double getV1() const     { return V1; }
-    double getV2() const     { return V2; }
-    double getTD() const     { return TD; }
-    double getTR() const     { return TR; }
-    double getTF() const     { return TF; }
-    double getTOn() const    { return TOn; }
+    double getV1() const { return V1; }
+
+    double getV2() const { return V2; }
+
+    double getTD() const { return TD; }
+
+    double getTR() const { return TR; }
+
+    double getTF() const { return TF; }
+
+    double getTOn() const { return TOn; }
+
     double getPeriod() const { return period; }
 
     double getVoltage(double time) override {
@@ -527,17 +550,13 @@ public:
 
         if (t < TD) {
             return V1;
-        }
-        else if (t < TD + TR) {
+        } else if (t < TD + TR) {
             return V1 + (V2 - V1) * (t - TD) / TR;
-        }
-        else if (t < TD + TR + TOn) {
+        } else if (t < TD + TR + TOn) {
             return V2;
-        }
-        else if (t < TD + TR + TOn + TF) {
+        } else if (t < TD + TR + TOn + TF) {
             return V2 - (V2 - V1) * (t - TD - TOn - TR) / TF;
-        }
-        else {
+        } else {
             return V1;
         }
     }
@@ -546,11 +565,12 @@ public:
         return getVoltage(currenttime);
     }
 
-    void updateTime(double t){currenttime=t;}
+    void updateTime(double t) { currenttime = t; }
 
     double getCurrent() override {
         return current;
     }
+
     string getType() override { return "VPULSE"; }
 };
 
@@ -563,11 +583,11 @@ public:
 
     string getType() override { return "Current Source"; }
 
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map<Element*, int>& currentIndexMap) override {
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexMap) override {
         bool hasN1 = nodeToIndex.count(node1->getName());
         bool hasN2 = nodeToIndex.count(node2->getName());
         double I = getValue();
@@ -608,15 +628,15 @@ public:
         return getValue() * sin(2 * M_PI * frequency * time) + offset;
     }
 
-    double getFrequency(){return frequency;}
+    double getFrequency() { return frequency; }
 
-    double getOffset(){return offset;}
+    double getOffset() { return offset; }
 
     double getValue() override {
-        return value*sin(2 * M_PI * frequency * currenttime) + offset;
+        return value * sin(2 * M_PI * frequency * currenttime) + offset;
     }
 
-    void updateTime(double t) override {currenttime=t;}
+    void updateTime(double t) override { currenttime = t; }
 
     string getType() override { return "ISIN"; }
 };
@@ -632,33 +652,37 @@ private:
     double period;
 
 public:
-    PulseCurrentSource(string name_, double I1_, double I2_, double TD_, double TR_, double TF_, double TOn_, double period_, Node *n1, Node *n2)
-            : CurrentSource(name_, I1_, n1, n2), I1(I1_), I2(I2_), TD(TD_), TR(TR_), TF(TF_), TOn(TOn_), period(period_) {}
+    PulseCurrentSource(string name_, double I1_, double I2_, double TD_, double TR_, double TF_, double TOn_,
+                       double period_, Node *n1, Node *n2)
+            : CurrentSource(name_, I1_, n1, n2), I1(I1_), I2(I2_), TD(TD_), TR(TR_), TF(TF_), TOn(TOn_),
+              period(period_) {}
 
-    double getI1() const      { return I1; }
-    double getI2() const      { return I2; }
-    double getTD() const      { return TD; }
-    double getTR() const      { return TR; }
-    double getTF() const      { return TF; }
-    double getTOn() const     { return TOn; }
-    double getPeriod() const  { return period; }
+    double getI1() const { return I1; }
+
+    double getI2() const { return I2; }
+
+    double getTD() const { return TD; }
+
+    double getTR() const { return TR; }
+
+    double getTF() const { return TF; }
+
+    double getTOn() const { return TOn; }
+
+    double getPeriod() const { return period; }
 
     double getCurrent(double time) override {
         double t = fmod(time, period);
 
         if (t < TD) {
             return I1;
-        }
-        else if (t < TD + TR) {
+        } else if (t < TD + TR) {
             return I1 + (I2 - I1) * (t - TD) / TR;
-        }
-        else if (t < TD + TR + TOn) {
+        } else if (t < TD + TR + TOn) {
             return I2;
-        }
-        else if (t < TD + TR + TOn + TF) {
+        } else if (t < TD + TR + TOn + TF) {
             return I2 - (I2 - I1) * (t - TD - TOn - TR) / TF;
-        }
-        else {
+        } else {
             return I1;
         }
     }
@@ -679,11 +703,13 @@ public:
     VCVS(string name_, double gain_, Node *n1, Node *n2, Node *controlNode1_, Node *controlNode2_) :
             VoltageSource(name_, 0, n1, n2), gain(gain_), controlNode1(controlNode1_), controlNode2(controlNode2_) {}
 
-    Node* getControlNode1() { return controlNode1; }
-    Node* getControlNode2() { return controlNode2; }
+    Node *getControlNode1() { return controlNode1; }
+
+    Node *getControlNode2() { return controlNode2; }
+
     double getGain() { return gain; }
 
-    string getCategory() override{return "Controlled Voltage Source";}
+    string getCategory() override { return "Controlled Voltage Source"; }
 
     double getVoltage(double time) override {
         double controlVoltage = controlNode1->getVoltage() - controlNode2->getVoltage();
@@ -694,11 +720,11 @@ public:
         return "VCVS";
     }
 
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map <Element*, int>& currentIndexmap) override {
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexmap) override {
         if (!currentIndexmap.count(this)) return;
         int vIdx = currentIndexmap[this];
         bool hasN1 = !node1->isGroundd();
@@ -737,26 +763,28 @@ private:
 public:
     CCVS(string name_, double gain_, Node *n1, Node *n2, Element *controlElement_)
             : VoltageSource(name_, 0, n1, n2), gain(gain_), controlElement(controlElement_) {}
+
     double getGain() { return gain; }
+
     double getVoltage(double time) override {
         double controlCurrent = controlElement->getCurrent();
         return gain * controlCurrent;
     }
 
-    Element *getcontrolElement() {return controlElement;}
+    Element *getcontrolElement() { return controlElement; }
 
     string getType() override {
         return "CCVS";
     }
 
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map<Element*, int>& currentIndexMap) override {
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexMap) override {
         int vIdx = currentIndexMap[this];
         currentIndexMap[this] = vIdx;
-        Element* control = getcontrolElement();
+        Element *control = getcontrolElement();
         int ctrlIdx = currentIndexMap[control];
         double gain = getGain();
         bool hasN1 = !node1->isGroundd();
@@ -791,8 +819,10 @@ public:
     VCCS(string name_, double gain_, Node *n1, Node *n2, Node *controlNode1_, Node *controlNode2_) :
             CurrentSource(name_, 0, n1, n2), gain(gain_), controlNode1(controlNode1_), controlNode2(controlNode2_) {}
 
-    Node* getControlNode1() { return controlNode1; }
-    Node* getControlNode2() { return controlNode2; }
+    Node *getControlNode1() { return controlNode1; }
+
+    Node *getControlNode2() { return controlNode2; }
+
     double getGain() { return gain; }
 
     double getCurrent(double time) override {
@@ -800,17 +830,17 @@ public:
         return gain * controlVoltage;
     }
 
-    string getCategory() override{return "Controlled Current Source";}
+    string getCategory() override { return "Controlled Current Source"; }
 
     string getType() override {
         return "VCCS";
     }
 
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map <Element*, int>& currentIndexmap) override {
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexmap) override {
         bool hasN1 = !node1->isGroundd();
         bool hasN2 = !node2->isGroundd();
         bool hasN3 = !controlNode1->isGroundd();
@@ -847,18 +877,18 @@ public:
         return gain * controlCurrent;
     }
 
-    Element *getcontrolElement() {return controlElement;}
+    Element *getcontrolElement() { return controlElement; }
 
     string getType() override {
         return "CCCS";
     }
 
-    void stamp(vector<vector<double>>& A,
-               vector<double>& b,
-               map<string, int>& nodeToIndex,
-               int& voltageIndex,
-               map<Element*, int>& currentIndexMap) override {
-        Element* control = getcontrolElement();
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexMap) override {
+        Element *control = getcontrolElement();
 
         int ctrlIdx = currentIndexMap[control];
         double gain = getGain();
@@ -886,7 +916,7 @@ public:
                 type = "Resistor";
                 break;
             case 'C':
-                if(name.size()==0)
+                if (name.size() == 0)
                     type = "Capacitor";
                 break;
             case 'L':
@@ -920,7 +950,7 @@ public:
     }
 
     string addNewElement(string node1, string node2, string name, double value, Circuit *circuit) {
-        if(node1==node2)
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
@@ -967,7 +997,7 @@ public:
     }
 
     string addDiode(string node1, string node2, string name, string model, Circuit *circuit) {
-        if(node1==node2)
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
@@ -986,50 +1016,50 @@ public:
         }
     }
 
-    string addGround(string node, Circuit* circuit){
-        if(circuit->getGround())
+    string addGround(string node, Circuit *circuit) {
+        if (circuit->getGround())
             return "Error! ground node already exists in the circuit\n";
         Node *n1 = circuit->getCreateNode(node);
         n1->setGround();
         circuit->setGround(node);
-        return "Ground added to node " + node +" successfully!\n";
+        return "Ground added to node " + node + " successfully!\n";
 
     }
 
-    string deleteGround(string node, Circuit* circuit){
-        if(!circuit->getNodeAccess().count(node))
+    string deleteGround(string node, Circuit *circuit) {
+        if (!circuit->getNodeAccess().count(node))
             return "Node does not exist\n";
-        if(!circuit->removeGround(node))
+        if (!circuit->removeGround(node))
             return "Error! Node is not set as ground\n";
-        return "Ground removed from node "+node+" successfully!\n";
+        return "Ground removed from node " + node + " successfully!\n";
     }
 
-    void showNodes(Circuit* circuit){
-        cout<<"Available nodes:\n";
-        if(!circuit->getNodeAccess().size())
-            cout<<"No node exists in the circuit\n";
-        int index=1;
-        for(auto node: circuit->getNodeAccess()){
-            cout<<node.first;
-            if(index!=circuit->getNodeAccess().size())
-                cout<<", ";
+    void showNodes(Circuit *circuit) {
+        cout << "Available nodes:\n";
+        if (!circuit->getNodeAccess().size())
+            cout << "No node exists in the circuit\n";
+        int index = 1;
+        for (auto node: circuit->getNodeAccess()) {
+            cout << node.first;
+            if (index != circuit->getNodeAccess().size())
+                cout << ", ";
             else
-                cout<<"\n";
+                cout << "\n";
             index++;
         }
     }
 
-    void list(Circuit* circuit){
-        cout<<"Elements:\n";
-        if(!circuit->getElements().size())
-            cout<<"No elements exists in the circuit\n";
-        for(auto element: circuit->getElements()){
-            cout<<element->getType()<<": "<<element->getName()<<", value: "<<element->getValue()<<endl;
+    void list(Circuit *circuit) {
+        cout << "Elements:\n";
+        if (!circuit->getElements().size())
+            cout << "No elements exists in the circuit\n";
+        for (auto element: circuit->getElements()) {
+            cout << element->getType() << ": " << element->getName() << ", value: " << element->getValue() << endl;
         }
     }
 
-    void listElement(string type, Circuit* circuit){
-        switch(type[0]){
+    void listElement(string type, Circuit *circuit) {
+        switch (type[0]) {
             case 'R':
                 type = "Resistor";
                 break;
@@ -1043,19 +1073,20 @@ public:
                 type = "Diode";
                 break;
         }
-        cout<<type<<"(s):\n";
-        int index=0;
-        for(auto element: circuit->getElements()){
-            if(element->getType()==type) {
-                cout << element->getType() << ": " << element->getName() << ", value: " << element->getValue()<< endl;
+        cout << type << "(s):\n";
+        int index = 0;
+        for (auto element: circuit->getElements()) {
+            if (element->getType() == type) {
+                cout << element->getType() << ": " << element->getName() << ", value: " << element->getValue() << endl;
                 index++;
             }
-        }if(!index)
-            cout<<"No "<<type<<" exist in the circuit\n";
+        }
+        if (!index)
+            cout << "No " << type << " exist in the circuit\n";
     }
 
-    string addDCVoltageSource(string name, string node1, string node2, double value, Circuit *circuit){
-        if(node1==node2)
+    string addDCVoltageSource(string name, string node1, string node2, double value, Circuit *circuit) {
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
@@ -1068,8 +1099,8 @@ public:
     }
 
     string addSinusoidalVoltageSource(string name, string node1, string node2, double amplitude,
-                                      double frequency, double offset, Circuit *circuit){
-        if(node1==node2)
+                                      double frequency, double offset, Circuit *circuit) {
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
@@ -1082,8 +1113,8 @@ public:
     }
 
     string addPulseVoltageSource(string name, string node1, string node2, double V1, double V2, double TD, double TR,
-                                 double TF, double TOn, double period, Circuit* circuit){
-        if(node1==node2)
+                                 double TF, double TOn, double period, Circuit *circuit) {
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
@@ -1095,8 +1126,8 @@ public:
         return element->getType() + " added successfully!\n";
     }
 
-    string addDCCurrentSource(string name, string node1, string node2, double value, Circuit *circuit){
-        if(node1==node2)
+    string addDCCurrentSource(string name, string node1, string node2, double value, Circuit *circuit) {
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
@@ -1109,8 +1140,8 @@ public:
     }
 
     string addSinusoidalCurrentSource(string name, string node1, string node2, double amplitude,
-                                      double frequency, double offset, Circuit *circuit){
-        if(node1==node2)
+                                      double frequency, double offset, Circuit *circuit) {
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
@@ -1123,8 +1154,8 @@ public:
     }
 
     string addPulseCurrentSource(string name, string node1, string node2, double I1, double I2, double TD, double TR,
-                                 double TF, double TOn, double period, Circuit* circuit){
-        if(node1==node2)
+                                 double TF, double TOn, double period, Circuit *circuit) {
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
@@ -1136,8 +1167,9 @@ public:
         return element->getType() + " added successfully!\n";
     }
 
-    string addVCVS(string name, string node1, string node2, string controlNode1, string controlNode2, double gain, Circuit* circuit){
-        if(node1==node2)
+    string addVCVS(string name, string node1, string node2, string controlNode1, string controlNode2, double gain,
+                   Circuit *circuit) {
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
@@ -1151,16 +1183,16 @@ public:
         return element->getType() + " added successfully!\n";
     }
 
-    string addCCVS(string name, string node1, string node2, string controlElement, double gain, Circuit* circuit){
-        if(node1==node2)
+    string addCCVS(string name, string node1, string node2, string controlElement, double gain, Circuit *circuit) {
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
         auto elements = circuit->getElements();
         Element *element = nullptr;
         Element *cElement = nullptr;
-        for (auto& e : elements){
-            if (e->getName() == controlElement){
+        for (auto &e: elements) {
+            if (e->getName() == controlElement) {
                 cElement = e;
                 break;
             }
@@ -1172,8 +1204,9 @@ public:
         return element->getType() + " added successfully!\n";
     }
 
-    string addVCCS(string name, string node1, string node2, string controlNode1, string controlNode2, double gain, Circuit* circuit){
-        if(node1==node2)
+    string addVCCS(string name, string node1, string node2, string controlNode1, string controlNode2, double gain,
+                   Circuit *circuit) {
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
@@ -1187,16 +1220,16 @@ public:
         return element->getType() + " added successfully!\n";
     }
 
-    string addCCCS(string name, string node1, string node2, string controlElement, double gain, Circuit* circuit){
-        if(node1==node2)
+    string addCCCS(string name, string node1, string node2, string controlElement, double gain, Circuit *circuit) {
+        if (node1 == node2)
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
         auto elements = circuit->getElements();
         Element *element = nullptr;
         Element *cElement = nullptr;
-        for (auto& e : elements){
-            if (e->getName() == controlElement){
+        for (auto &e: elements) {
+            if (e->getName() == controlElement) {
                 cElement = e;
                 break;
             }
@@ -1212,21 +1245,21 @@ public:
         cout << "================= Circuit Details =================\n";
         cout << "\nElements:\n";
 
-        for (auto element : circuit->getElements()) {
+        for (auto element: circuit->getElements()) {
             cout << "Type: " << element->getType()
                  << "  |  Name: " << element->getName()
                  << "  |  Nodes: (" << element->getFirstNode()->getName()
                  << ", " << element->getSecondNode()->getName() << ")";
 
             // منابع سینوسی ولتاژ
-            if (auto* vsin = dynamic_cast<SinusoidalVoltageSource*>(element)) {
+            if (auto *vsin = dynamic_cast<SinusoidalVoltageSource *>(element)) {
                 cout << "  |  Amplitude: " << vsin->getValue()
                      << "  |  Frequency: " << vsin->getFrequency()
                      << "  |  Offset: " << vsin->getOffset();
             }
 
                 // منابع پالس ولتاژ
-            else if (auto* vpulse = dynamic_cast<PulseVoltageSource*>(element)) {
+            else if (auto *vpulse = dynamic_cast<PulseVoltageSource *>(element)) {
                 cout << "  |  V1: " << vpulse->getV1()
                      << "  |  V2: " << vpulse->getV2()
                      << "  |  TD: " << vpulse->getTD()
@@ -1237,14 +1270,14 @@ public:
             }
 
                 // منابع سینوسی جریان
-            else if (auto* isin = dynamic_cast<SinusoidalCurrentSource*>(element)) {
+            else if (auto *isin = dynamic_cast<SinusoidalCurrentSource *>(element)) {
                 cout << "  |  Amplitude: " << isin->getValue()
                      << "  |  Frequency: " << isin->getFrequency()
                      << "  |  Offset: " << isin->getOffset();
             }
 
                 // منابع پالس جریان
-            else if (auto* ipulse = dynamic_cast<PulseCurrentSource*>(element)) {
+            else if (auto *ipulse = dynamic_cast<PulseCurrentSource *>(element)) {
                 cout << "  |  I1: " << ipulse->getI1()
                      << "  |  I2: " << ipulse->getI2()
                      << "  |  TD: " << ipulse->getTD()
@@ -1255,29 +1288,27 @@ public:
             }
 
                 // منابع وابسته ولتاژ (VCVS)
-            else if (auto* vcvs = dynamic_cast<VCVS*>(element)) {
+            else if (auto *vcvs = dynamic_cast<VCVS *>(element)) {
                 cout << "  |  Gain: " << vcvs->getGain()
                      << "  |  Control Nodes: (" << vcvs->getControlNode1()->getName()
                      << ", " << vcvs->getControlNode2()->getName() << ")";
             }
 
                 // منابع وابسته جریان (VCCS)
-            else if (auto* vccs = dynamic_cast<VCCS*>(element)) {
+            else if (auto *vccs = dynamic_cast<VCCS *>(element)) {
                 cout << "  |  Gain: " << vccs->getGain()
                      << "  |  Control Nodes: (" << vccs->getControlNode1()->getName()
                      << ", " << vccs->getControlNode2()->getName() << ")";
             }
 
                 // منابع وابسته به جریان (CCCS, CCVS)
-            else if (auto* cc = dynamic_cast<CCCS*>(element)) {
+            else if (auto *cc = dynamic_cast<CCCS *>(element)) {
                 cout << "  |  Gain: " << cc->getGain()
                      << "  |  Controlled Element: " << cc->getcontrolElement()->getName();
-            }
-            else if (auto* cc = dynamic_cast<CCVS*>(element)) {
+            } else if (auto *cc = dynamic_cast<CCVS *>(element)) {
                 cout << "  |  Gain: " << cc->getGain()
                      << "  |  Controlled Element: " << cc->getcontrolElement()->getName();
-            }
-            else {
+            } else {
                 cout << "  |  Value: " << element->getValue();
             }
 
@@ -1304,11 +1335,11 @@ public:
         cout << "====================================================\n";
     }
 
-    bool isConnected(Circuit* circuit) {
+    bool isConnected(Circuit *circuit) {
         if (circuit->getNodes().empty()) return true;
 
         unordered_map<string, vector<string>> adjacency;
-        for (Element* e : circuit->getElements()) {
+        for (Element *e: circuit->getElements()) {
             if (!e) continue;
             string a = e->getFirstNode()->getName();
             string b = e->getSecondNode()->getName();
@@ -1323,8 +1354,9 @@ public:
         visited.insert(start);
 
         while (!q.empty()) {
-            string current = q.front(); q.pop();
-            for (const string& neighbor : adjacency[current]) {
+            string current = q.front();
+            q.pop();
+            for (const string &neighbor: adjacency[current]) {
                 if (!visited.count(neighbor)) {
                     visited.insert(neighbor);
                     q.push(neighbor);
@@ -1333,21 +1365,24 @@ public:
         }
 
         return visited.size() == circuit->getNodeAccess().size();
-    }bool preAnalysisErrs(Circuit *circuit){
-        if(!circuit->getGround()){
-            cout<<"Error: No ground node detected in the circuit.\n";
+    }
+
+    bool preAnalysisErrs(Circuit *circuit) {
+        if (!circuit->getGround()) {
+            cout << "Error: No ground node detected in the circuit.\n";
             return false;
-        }if(!isConnected(circuit)) {
+        }
+        if (!isConnected(circuit)) {
             cout << "Error: Not all nodes are connected!\n";
             return false;
         }
-        for(auto element: circuit->getElements()) {
+        for (auto element: circuit->getElements()) {
             if (element->getType() == "CCCS") {
                 auto *cc = dynamic_cast<CCCS *>(element);
                 if (cc) {
                     Element *ctrl = cc->getcontrolElement();
                     bool found = false;
-                    for (auto e : circuit->getElements()) {
+                    for (auto e: circuit->getElements()) {
                         if (e == ctrl) {
                             found = true;
                             break;
@@ -1365,7 +1400,7 @@ public:
                 if (cv) {
                     Element *ctrl = cv->getcontrolElement();
                     bool found = false;
-                    for (auto e : circuit->getElements()) {
+                    for (auto e: circuit->getElements()) {
                         if (e == ctrl) {
                             found = true;
                             break;
@@ -1377,45 +1412,49 @@ public:
                         return false;
                     }
                 }
-            }if (element->getType() == "VCCS") {
+            }
+            if (element->getType() == "VCCS") {
                 auto *vc = dynamic_cast<VCCS *>(element);
                 if (vc) {
                     Node *ctrl = vc->getControlNode1();
-                    Node*ctrl2 = vc->getControlNode2();
+                    Node *ctrl2 = vc->getControlNode2();
                     bool found = false;
                     bool found2 = false;
-                    for (auto e : circuit->getNodes()) {
+                    for (auto e: circuit->getNodes()) {
                         if (e == ctrl) {
                             found = true;
                         }
-                        if(e==ctrl2)
-                            found2=true;
-                        if(found && found2)
+                        if (e == ctrl2)
+                            found2 = true;
+                        if (found && found2)
                             break;
                     }
-                    if (!found || !found2 || (ctrl->getConnectedElements().size()==0) || (ctrl2->getConnectedElements().size()==0)) {
+                    if (!found || !found2 || (ctrl->getConnectedElements().size() == 0) ||
+                        (ctrl2->getConnectedElements().size() == 0)) {
                         cout << "Error: Dependent source " << vc->getName()
                              << "  has an undefined control element.\n";
                         return false;
                     }
                 }
-            }if (element->getType() == "VCVS") {
+            }
+            if (element->getType() == "VCVS") {
                 auto *vv = dynamic_cast<VCVS *>(element);
                 if (vv) {
                     Node *ctrl = vv->getControlNode1();
-                    Node*ctrl2 = vv->getControlNode2();
+                    Node *ctrl2 = vv->getControlNode2();
                     bool found = false;
                     bool found2 = false;
-                    for (auto e : circuit->getNodes()) {
+                    for (auto e: circuit->getNodes()) {
                         if (e == ctrl) {
                             found = true;
                         }
-                        if(e==ctrl2)
-                            found2=true;
-                        if(found && found2)
+                        if (e == ctrl2)
+                            found2 = true;
+                        if (found && found2)
                             break;
                     }
-                    if (!found || !found2 || (ctrl->getConnectedElements().size()==0) || (ctrl2->getConnectedElements().size()==0)) {
+                    if (!found || !found2 || (ctrl->getConnectedElements().size() == 0) ||
+                        (ctrl2->getConnectedElements().size() == 0)) {
                         cout << "Error: Dependent source " << vv->getName()
                              << "  has an undefined control element.\n";
                         return false;
@@ -1423,11 +1462,10 @@ public:
                 }
             }
         }
-        cout<<"Seems fine!\n";
         return true;
     }
 
-    void loadCircuit(Circuit *circuit, string address){
+    void loadCircuit(Circuit *circuit, string address) {
         ifstream fin(address, ios::in);
 
         if (!fin) {
@@ -1441,7 +1479,7 @@ public:
         unsigned int t1;
         unsigned int t2;
         t1 = address.find_last_of("\\") + 1;
-        t2 = address.length()-11;
+        t2 = address.length() - 11;
         tmpAddress = address.substr(t1, t2);
         cout << tmpAddress << ":" << endl;
         while (getline(fin, line)) {
@@ -1519,7 +1557,7 @@ public:
                     cout << addDCCurrentSource(name, node1, node2, value, circuit);
                 }
             }
-            if (type == "D" || type == "Z"){
+            if (type == "D" || type == "Z") {
                 name = words[1];
                 node1 = words[2];
                 node2 = words[3];
@@ -1612,11 +1650,11 @@ public:
 
                 if (type == "VSIN") {
                     cout << addSinusoidalVoltageSource(name, node1, node2, amplitude, frequency,
-                                                                  offset, circuit);
+                                                       offset, circuit);
                 }
                 if (type == "ISIN") {
                     cout << addSinusoidalCurrentSource(name, node1, node2, amplitude, frequency,
-                                                                  offset, circuit);
+                                                       offset, circuit);
                 }
             }
 
@@ -1780,11 +1818,11 @@ public:
                 }
                 if (type == "VPULSE") {
                     cout << addPulseVoltageSource(name, node1, node2, Vi, Vf, TD, TR, TF, TOn,
-                                                             period, circuit);
+                                                  period, circuit);
                 }
                 if (type == "IPULSE") {
                     cout << addPulseCurrentSource(name, node1, node2, Vi, Vf, TD, TR, TF, TOn,
-                                                             period, circuit);
+                                                  period, circuit);
                 }
             }
             if (type == "E" || type == "G") {
@@ -1903,7 +1941,7 @@ public:
     }
 
     void saveCircuitToFile(Circuit *circuit, string filename) {
-        const char* dir = "drafts";
+        const char *dir = "drafts";
         struct stat sb;
         if (stat(dir, &sb) == -1) {
             if (_mkdir(dir) == -1) {
@@ -1920,90 +1958,80 @@ public:
             cout << "Error: Could not open file '" + filePath + "' for writing.\n";
         }
 
-        for (Element *e : circuit->getElements()) {
+        for (Element *e: circuit->getElements()) {
             if (!e) continue;
             string type = e->getType();
             string name = e->getName();
-            string n1   = e->getFirstNode()->getName();
-            string n2   = e->getSecondNode()->getName();
+            string n1 = e->getFirstNode()->getName();
+            string n2 = e->getSecondNode()->getName();
 
             if (type == "Resistor" || type == "Capacitor" || type == "Inductor") {
                 double value = e->getValue();
                 char prefix = (type == "Resistor" ? 'R' : type == "Capacitor" ? 'C' : 'L');
                 fout << prefix << " " << name << " " << n1 << " " << n2 << " " << value << "\n";
-            }
-            else if (type == "VDC") {
+            } else if (type == "VDC") {
                 auto *vdc = dynamic_cast<DCVoltageSource *>(e);
                 if (vdc) {
                     double value = vdc->getValue();
                     fout << "V " << name << " " << n1 << " " << n2 << " " << value << "\n";
                 }
-            }
-            else if (type == "IDC") {
+            } else if (type == "IDC") {
                 auto *idc = dynamic_cast<DCCurrentSource *>(e);
                 if (idc) {
                     double value = idc->getValue();
                     fout << "I " << name << " " << n1 << " " << n2 << " " << value << "\n";
                 }
-            }
-            else if (type == "Diode") {
+            } else if (type == "Diode") {
                 fout << "D " << name << " " << n1 << " " << n2 << "\n";
-            }
-            else if (type == "Zener Diode") {
+            } else if (type == "Zener Diode") {
                 fout << "Z " << name << " " << n1 << " " << n2 << "\n";
-            }
-            else if (type == "VSIN") {
+            } else if (type == "VSIN") {
                 auto *sv = dynamic_cast<SinusoidalVoltageSource *>(e);
                 if (sv) {
-                    double amp  = sv->getValue();
+                    double amp = sv->getValue();
                     double freq = sv->getFrequency();
-                    double off  = sv->getOffset();
+                    double off = sv->getOffset();
                     fout << "VSIN " << name << " " << n1 << " " << n2
                          << " " << amp << " " << freq << " " << off << "\n";
                 }
-            }
-            else if (type == "ISIN") {
+            } else if (type == "ISIN") {
                 auto *sc = dynamic_cast<SinusoidalCurrentSource *>(e);
                 if (sc) {
-                    double amp  = sc->getValue();
+                    double amp = sc->getValue();
                     double freq = sc->getFrequency();
-                    double off  = sc->getOffset();
+                    double off = sc->getOffset();
                     fout << "ISIN " << name << " " << n1 << " " << n2
                          << " " << amp << " " << freq << " " << off << "\n";
                 }
-            }
-
-            else if (type == "VPULSE") {
+            } else if (type == "VPULSE") {
                 auto *pv = dynamic_cast<PulseVoltageSource *>(e);
                 if (pv) {
-                    double V1     = pv->getV1();
-                    double V2     = pv->getV2();
-                    double TD     = pv->getTD();
-                    double TR     = pv->getTR();
-                    double TF     = pv->getTF();
-                    double TOn    = pv->getTOn();
+                    double V1 = pv->getV1();
+                    double V2 = pv->getV2();
+                    double TD = pv->getTD();
+                    double TR = pv->getTR();
+                    double TF = pv->getTF();
+                    double TOn = pv->getTOn();
                     double period = pv->getPeriod();
                     fout << "VPULSE " << name << " " << n1 << " " << n2
                          << " " << V1 << " " << V2 << " " << TD << " " << TR
                          << " " << TF << " " << TOn << " " << period << "\n";
                 }
-            }
-            else if (type == "IPULSE") {
+            } else if (type == "IPULSE") {
                 auto *pc = dynamic_cast<PulseCurrentSource *>(e);
                 if (pc) {
-                    double I1     = pc->getI1();
-                    double I2     = pc->getI2();
-                    double TD     = pc->getTD();
-                    double TR     = pc->getTR();
-                    double TF     = pc->getTF();
-                    double TOn    = pc->getTOn();
+                    double I1 = pc->getI1();
+                    double I2 = pc->getI2();
+                    double TD = pc->getTD();
+                    double TR = pc->getTR();
+                    double TF = pc->getTF();
+                    double TOn = pc->getTOn();
                     double period = pc->getPeriod();
                     fout << "IPULSE " << name << " " << n1 << " " << n2
                          << " " << I1 << " " << I2 << " " << TD << " " << TR
                          << " " << TF << " " << TOn << " " << period << "\n";
                 }
-            }
-            else if (type == "VCVS") {
+            } else if (type == "VCVS") {
                 auto *vd = dynamic_cast<VCVS *>(e);
                 if (vd) {
                     string cn1 = vd->getControlNode1()->getName();
@@ -2012,8 +2040,7 @@ public:
                     fout << "E " << name << " " << n1 << " " << n2
                          << " " << cn1 << " " << cn2 << " " << gain << "\n";
                 }
-            }
-            else if (type == "VCCS") {
+            } else if (type == "VCCS") {
                 auto *vc = dynamic_cast<VCCS *>(e);
                 if (vc) {
                     string cn1 = vc->getControlNode1()->getName();
@@ -2022,21 +2049,19 @@ public:
                     fout << "G " << name << " " << n1 << " " << n2
                          << " " << cn1 << " " << cn2 << " " << gain << "\n";
                 }
-            }
-            else if (type == "CCVS") {
+            } else if (type == "CCVS") {
                 auto *cv = dynamic_cast<CCVS *>(e);
                 if (cv) {
                     string ctrlName = cv->getcontrolElement()->getName();
-                    double gain     = cv->getGain();
+                    double gain = cv->getGain();
                     fout << "H " << name << " " << n1 << " " << n2
                          << " " << ctrlName << " " << gain << "\n";
                 }
-            }
-            else if (type == "CCCS") {
+            } else if (type == "CCCS") {
                 auto *cc = dynamic_cast<CCCS *>(e);
                 if (cc) {
                     string ctrlName = cc->getcontrolElement()->getName();
-                    double gain     = cc->getGain();
+                    double gain = cc->getGain();
                     fout << "F " << name << " " << n1 << " " << n2
                          << " " << ctrlName << " " << gain << "\n";
                 }
@@ -2046,10 +2071,67 @@ public:
         fout.close();
     }
 
-    void checkMatrix(Circuit* circuit) {
+    void showAndLoadSchematic(Circuit *circuit, string &loadedFilename) {
+        const char *dirname = "drafts";
+        DIR *dirp = opendir(dirname);
+        if (!dirp) {
+            cout << "Error: Could not open the 'drafts' folder\n";
+        } else {
+            vector<string> files;
+            struct dirent *entry;
+            while ((entry = readdir(dirp)) != nullptr) {
+                string name = entry->d_name;
+                if (name == "." || name == "..")
+                    continue;
+                files.push_back(name);
+            }
+            closedir(dirp);
+
+            if (files.empty()) {
+                cout << "No existing schematics found in 'drafts'.\n";
+            } else {
+                while (true) {
+                    cout << "-choose existing schematic:\n";
+                    for (int i = 0; i < files.size(); ++i) {
+                        cout << "  " << (i + 1) << "-" << files[i] << "\n";
+                    }
+
+                    cout << "Type 'return' to exit the menu.\n";
+
+                    int choice;
+                    string user_input;
+
+                    cout << "Enter your choice: ";
+                    getline(cin, user_input);
+
+                    if (user_input == "return") {
+                        cout << "Continue building your circuit" << endl;
+                        break;
+                    }
+
+                    try {
+                        choice = stoi(user_input);
+                        if (choice < 1 || choice > (int) files.size()) {
+                            cout << "-Error: Inappropriate input\n";
+                        } else {
+                            string selectedName = files[choice - 1];
+                            string fullPath = string(dirname) + "\\" + selectedName;
+                            loadCircuit(circuit, fullPath);
+                            loadedFilename = selectedName;
+                            break;
+                        }
+                    } catch (const invalid_argument& e) {
+                        cout << "-Error: Inappropriate input\n";
+                    }
+                }
+            }
+        }
+    }
+
+    void checkMatrix(Circuit *circuit) {
         circuit->BuildMNA();
-        const auto& A = circuit->getMatrix();
-        const auto& b = circuit->getRHS();
+        const auto &A = circuit->getMatrix();
+        const auto &b = circuit->getRHS();
         int n = A.size();
         if (n == 0) {
             cout << "MNA matrix is empty!\n";
@@ -2071,7 +2153,7 @@ public:
         cout << "\n";
     }
 
-    void DCAnalysis(Circuit* circuit) {
+    void DCAnalysis(Circuit *circuit) {
         circuit->BuildMNA();
         vector<vector<double>> A = circuit->getMatrix();
         vector<double> b = circuit->getRHS();
@@ -2079,7 +2161,7 @@ public:
         for (int i = 0; i < circuit->ordernodes.size(); ++i) {
             circuit->ordernodes[i]->setVoltage(solution[i]);
         }
-        for (Element* e : circuit->getElements()) {
+        for (Element *e: circuit->getElements()) {
             if (circuit->currentIndexmap.count(e)) {
                 int idx = circuit->currentIndexmap[e];
                 e->setCurrent(solution[idx]);
@@ -2087,20 +2169,19 @@ public:
         }
         cout << "========== DC Operating Point Analysis ==========\n";
         cout << "\nNode Voltages:\n";
-        for (auto* node : circuit->ordernodes) {
+        for (auto *node: circuit->ordernodes) {
             cout << "V(" << node->getName() << ") = " << fixed << setprecision(3) << node->getVoltage() << " V\n";
         }
         cout << "\nElement Currents:\n";
-        for (Element* e : circuit->getElements()) {
+        for (Element *e: circuit->getElements()) {
             cout << "I(" << e->getName() << ") = " << fixed << setprecision(3) << e->getCurrent() << " A\n";
         }
 
         cout << "=================================================\n";
     }
 
-
     void DCSweep(string sweptSource, double startValue, double endValue, double increment,
-                 string type, string targetName, Circuit* circuit) {
+                 string type, string targetName, Circuit *circuit) {
         Element *sweepElem = nullptr;
         for (auto *e: circuit->getElements()) {
             if (e->getName() == sweptSource) {
@@ -2108,21 +2189,44 @@ public:
                 break;
             }
         }
+
         if (!sweepElem) {
-            cout << "Error: source not found!\n";
+            cout << "Error: source " << sweptSource << " not found!\n";
             return;
         }
+
+        if (type == "V" && !circuit->getNodeAccess().count(targetName)) {
+            cout << "Error: Node " << targetName << " not found in the circuit\n";
+            return;
+        } else if (type == "I") {
+            bool found = false;
+            for (auto &element: circuit->getElements()) {
+                if (element->getName() == targetName) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                cout << "Error: Element " << targetName << " not found in the circuit\n";
+                return;
+            }
+        }
+
         double originalValue = sweepElem->getValue();
         cout << "=============== DC Sweep Analysis ===============\n";
+
         for (double val = startValue; val <= endValue + 1e-9; val += increment) {
             sweepElem->setValue(val);
             circuit->BuildMNA();
             vector<vector<double>> A = circuit->getMatrix();
             vector<double> b = circuit->getRHS();
             vector<double> solution = gaussianElimination(A, b);
+
             for (int i = 0; i < circuit->ordernodes.size(); ++i)
                 circuit->ordernodes[i]->setVoltage(solution[i]);
+
             int N = circuit->ordernodes.size();
+
             for (Element *e: circuit->getElements()) {
                 if (circuit->currentIndexmap.count(e)) {
                     int idx = circuit->currentIndexmap[e];
@@ -2130,25 +2234,27 @@ public:
                     e->setCurrent(current);
                 }
             }
+
             cout << sweptSource << " = " << val << " : ";
+
             if (type == "V") {
-                if(!circuit->getNodeAccess().count(targetName)) {
+                if (!circuit->getNodeAccess().count(targetName)) {
                     cout << "Node " << targetName << " not found in the circuit" << endl;
                     return;
                 }
                 bool found = false;
                 for (auto *n: circuit->ordernodes) {
                     if (n->getName() == targetName) {
-                        cout << "V(" << targetName << ") = " << fixed << setprecision(3) << n->getVoltage() << " V\n";
+                        cout << "V(" << targetName << ") = " << fixed << setprecision(3) << n->getVoltage() << " V";
                         found = true;
                         break;
                     }
                 }
-                if (!found)
-                    cout << "Node " << targetName << " not found\n";
+                if (!found) cout << "Error: node " << targetName << " not found";
             } else if (type == "I") {
-                Element* analyzedElement = nullptr;
-                for (auto& element : circuit->getElements()){
+                Element *analyzedElement = nullptr;
+                bool found = false;
+                for (auto &element: circuit->getElements()) {
                     if (element->getName() == targetName) {
                         analyzedElement = element;
                         break;
@@ -2159,26 +2265,62 @@ public:
                     cout << "Component " << targetName << " not found in the circuit" << endl;
                     return;
                 }
-                bool found = false;
+
                 for (auto *e: circuit->getElements()) {
                     if (e->getName() == targetName) {
-                        cout << "I(" << targetName << ") = " << fixed << setprecision(3) << e->getCurrent() << " A\n";
+                        cout << "I(" << targetName << ") = " << fixed << setprecision(3) << e->getCurrent() << " A";
                         found = true;
                         break;
                     }
                 }
-                if (!found)
-                    cout << "Element " << targetName << " not found\n";
+                if (!found) cout << "Error: element " << targetName << " not found";
             }
-
+            cout << endl;
         }
         cout << "=================================================\n";
-        sweepElem->setValue(originalValue);
 
+        sweepElem->setValue(originalValue);
     }
 
+    void multipleDCSweep(vector<string> &probes, string sweptSource, double startValue, double endValue, double increment, Circuit* circuit){
+        for (auto& p : probes){
+            if (p[0]=='V'){
+                string type = "V";
+                p.erase(0, 1);
+                p.erase(remove(p.begin(), p.end(), '('), p.end());
+                p.erase(remove(p.begin(), p.end(), ')'), p.end());
+                DCSweep(sweptSource, startValue, endValue, increment, type, p, circuit);
+            }
+            if (p[0] == 'I'){
+                string type = "I";
+                p.erase(0, 1);
+                p.erase(remove(p.begin(), p.end(), '('), p.end());
+                p.erase(remove(p.begin(), p.end(), ')'), p.end());
+                DCSweep(sweptSource, startValue, endValue, increment, type, p, circuit);
+            }
+        }
+    }
+
+
     void TransientAnalysis(double startValue, double endValue, double increment,
-                           string type, string target, Circuit* circuit){
+                           string type, string target, Circuit *circuit) {
+        if (type == "V" && !circuit->getNodeAccess().count(target)) {
+            cout << "Error: Node " << target << " not found in the circuit\n";
+            return;
+        } else if (type == "I") {
+            bool found = false;
+            for (auto &element: circuit->getElements()) {
+                if (element->getName() == target) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                cout << "Error: Element " << target << " not found in the circuit\n";
+                return;
+            }
+        }
+
         int steps = static_cast<int>((endValue - startValue) / increment) + 1;
         double originalValue = 0;
 
@@ -2188,10 +2330,10 @@ public:
         for (int step = 0; step < steps; ++step) {
             double t = startValue + step * increment;
 
-            for (Element* e : circuit->getElements()) {
-                if (auto* vs = dynamic_cast<VoltageSource*>(e)) {
+            for (Element *e: circuit->getElements()) {
+                if (auto *vs = dynamic_cast<VoltageSource *>(e)) {
                     e->updateTime(t);
-                } else if (auto* cs = dynamic_cast<CurrentSource*>(e)) {
+                } else if (auto *cs = dynamic_cast<CurrentSource *>(e)) {
                     e->updateTime(t);
                 }
             }
@@ -2202,34 +2344,33 @@ public:
             for (int i = 0; i < circuit->ordernodes.size(); ++i) {
                 circuit->ordernodes[i]->setVoltage(solution[i]);
             }
-            for (Element* e : circuit->getElements()) {
+            for (Element *e: circuit->getElements()) {
                 if (circuit->currentIndexmap.count(e)) {
                     int idx = circuit->currentIndexmap[e];
                     e->setCurrent(solution[idx]);
                 }
             }
-            cout << fixed << setprecision(6);
+            cout << fixed << setprecision(3);
             cout << "t = " << t << " s : ";
 
             if (type == "V") {
-                if(!circuit->getNodeAccess().count(target)) {
+                if (!circuit->getNodeAccess().count(target)) {
                     cout << "Node " << target << " not found in the circuit" << endl;
                     return;
                 }
                 bool found = false;
-                for (auto* n : circuit->ordernodes) {
+                for (auto *n: circuit->ordernodes) {
                     if (n->getName() == target) {
-                        cout << "V(" << target << ") = " << fixed << setprecision(6) << n->getVoltage() << " V";
+                        cout << "V(" << target << ") = " << fixed << setprecision(3) << n->getVoltage() << " V";
                         found = true;
                         break;
                     }
                 }
                 if (!found) cout << "Error: node " << target << " not found";
-
             } else if (type == "I") {
                 bool found = false;
-                Element* analyzedElement = nullptr;
-                for (auto& element : circuit->getElements()){
+                Element *analyzedElement = nullptr;
+                for (auto &element: circuit->getElements()) {
                     if (element->getName() == target) {
                         analyzedElement = element;
                         break;
@@ -2240,9 +2381,9 @@ public:
                     cout << "Component " << target << " not found in the circuit" << endl;
                     return;
                 }
-                for (auto* e : circuit->getElements()) {
+                for (auto *e: circuit->getElements()) {
                     if (e->getName() == target) {
-                        cout << "I(" << target << ") = " << fixed << setprecision(6) << e->getCurrent() << " A";
+                        cout << "I(" << target << ") = " << fixed << setprecision(3) << e->getCurrent() << " A";
                         found = true;
                         break;
                     }
@@ -2254,6 +2395,27 @@ public:
         }
         cout << "========================================\n";
     }
+
+    void multipleTransient(vector<string> &probes, double startValue, double endValue, double increment, Circuit* circuit) {
+        for (auto& p : probes) {
+            if (p[0] == 'V') {
+                string type = "V";
+                p.erase(0, 1);
+                p.erase(remove(p.begin(), p.end(), '('), p.end());
+                p.erase(remove(p.begin(), p.end(), ')'), p.end());
+                TransientAnalysis(startValue, endValue, increment, type, p, circuit);
+            }
+            if (p[0] == 'I') {
+                string type = "I";
+                p.erase(0, 1);
+                p.erase(remove(p.begin(), p.end(), '('), p.end());
+                p.erase(remove(p.begin(), p.end(), ')'), p.end());
+                TransientAnalysis(startValue, endValue, increment, type, p, circuit);
+            }
+        }
+    }
+
+
 
 };
 
@@ -2298,6 +2460,8 @@ public:
         regex check_matrix(R"(^\s*check\s+matrix\s*$)");
         regex DC_Analaysis(R"(^\s*DC\s+op\s+analysis\s*$)");
         regex DCSweep(R"(^\s*\.DC\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
+        regex multipleDCSweep(R"(^\.DC\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+[IV]\(\S+\)){2,}\s*$)", regex::icase);
+        regex multipleTRAN(R"(^\.TRAN\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+[IV]\(\S+\)){2,}\s*$)", regex::icase);
         regex transient(R"(^\s*\.TRAN\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
         regex reset(R"(^reset)");
         regex exit(R"(^exit$)");
@@ -2349,8 +2513,7 @@ public:
                     if (!loadedFilename.empty()) {
                         controller.saveCircuitToFile(circuit, loadedFilename);
                     }
-                }
-                else{
+                } else {
                     cout << controller.addDCCurrentSource(name, node1, node2, value, circuit);
                     if (!loadedFilename.empty()) {
                         controller.saveCircuitToFile(circuit, loadedFilename);
@@ -2421,13 +2584,14 @@ public:
                     continue;
                 }
                 if (match[1] == "V") {
-                    cout << controller.addSinusoidalVoltageSource(name, node1, node2, value[1], value[2], value[0],circuit);
+                    cout << controller.addSinusoidalVoltageSource(name, node1, node2, value[1], value[2], value[0],
+                                                                  circuit);
                     if (!loadedFilename.empty()) {
                         controller.saveCircuitToFile(circuit, loadedFilename);
                     }
-                }
-                else {
-                    cout << controller.addSinusoidalCurrentSource(name, node1, node2, value[1], value[2], value[0],circuit);
+                } else {
+                    cout << controller.addSinusoidalCurrentSource(name, node1, node2, value[1], value[2], value[0],
+                                                                  circuit);
                     if (!loadedFilename.empty()) {
                         controller.saveCircuitToFile(circuit, loadedFilename);
                     }
@@ -2508,8 +2672,7 @@ public:
                     if (!loadedFilename.empty()) {
                         controller.saveCircuitToFile(circuit, loadedFilename);
                     }
-                }
-                else {
+                } else {
                     cout << controller.addPulseCurrentSource(name, node1, node2, value[0], value[1], value[2], value[3],
                                                              value[4], value[5], value[6], circuit);
                     if (!loadedFilename.empty()) {
@@ -2715,7 +2878,7 @@ public:
                             cout << controller.addDCCurrentSource(name, node1, node2, value, circuit);
                         }
                     }
-                    if (type == "D" || type == "Z"){
+                    if (type == "D" || type == "Z") {
                         name = words[1];
                         node1 = words[2];
                         node2 = words[3];
@@ -3098,7 +3261,7 @@ public:
                 cout << "reading file ended :)" << endl;
                 fin.close();
             } else if (regex_match(input, match, addVCVS)) {
-                string name = 'E'+match[1].str();
+                string name = 'E' + match[1].str();
                 string node1 = match[2].str();
                 string node2 = match[3].str();
                 string controlNode1 = match[4].str();
@@ -3151,7 +3314,7 @@ public:
                     controller.saveCircuitToFile(circuit, loadedFilename);
                 }
             } else if (regex_match(input, match, addVCCS)) {
-                string name = 'G'+match[1].str();
+                string name = 'G' + match[1].str();
                 string node1 = match[2].str();
                 string node2 = match[3].str();
                 string controlNode1 = match[4].str();
@@ -3204,7 +3367,7 @@ public:
                     controller.saveCircuitToFile(circuit, loadedFilename);
                 }
             } else if (regex_match(input, match, addCCVS)) {
-                string name = 'H'+match[1].str();
+                string name = 'H' + match[1].str();
                 string node1 = match[2].str();
                 string node2 = match[3].str();
                 string cElement = match[4].str();
@@ -3251,7 +3414,7 @@ public:
                     controller.saveCircuitToFile(circuit, loadedFilename);
                 }
             } else if (regex_match(input, match, addCCCS)) {
-                string name = 'F'+match[1].str();
+                string name = 'F' + match[1].str();
                 string node1 = match[2].str();
                 string node2 = match[3].str();
                 string cElement = match[4].str();
@@ -3297,109 +3460,88 @@ public:
                 if (!loadedFilename.empty()) {
                     controller.saveCircuitToFile(circuit, loadedFilename);
                 }
-            }
-
-            else if (regex_match(input, match, save_file)) {
+            } else if (regex_match(input, match, save_file)) {
                 string name = match[1].str();
                 name += ".txt";
                 controller.saveCircuitToFile(circuit, name);
                 cout << "Circuit saved to " << name << endl;
-            }
-
-            else if (regex_match(input, match, show_existing_schematics)) {
-                const char* dirname = "drafts";
-                DIR* dirp = opendir(dirname);
-                if (!dirp) {
-                    cout << "Error: Could not open the 'drafts' folder\n";
-                } else {
-                    vector<string> files;
-                    struct dirent* entry;
-                    while ((entry = readdir(dirp)) != nullptr) {
-                        string name = entry->d_name;
-                        if (name == "." || name == "..")
-                            continue;
-                        files.push_back(name);
-                    }
-                    closedir(dirp);
-
-                    if (files.empty()) {
-                        cout << "No existing schematics found in 'drafts'.\n";
-                    } else {
-                        cout << "-choose existing schematic:\n";
-                        for (int i = 0; i < files.size(); ++i) {
-                            cout << "  " << (i+1) << "-" << files[i] << "\n";
-                        }
-
-                        int choice = 0;
-                        if (!(cin >> choice) || choice < 1 || choice > (int)files.size()) {
-                            cout << "-Error : Inappropriate input\n";
-                            string tmp;
-                            getline(cin, tmp);
-                        } else {
-                            string selectedName = files[choice - 1];
-                            string fullPath = string(dirname) + "\\" + selectedName;
-                            controller.loadCircuit(circuit, fullPath);
-                            loadedFilename = selectedName;
-                            string tmp;
-                            getline(cin, tmp);
-                        }
-                    }
-                }
-            }
-            else if (regex_match(input, match, preanalysischeck)) {
+            } else if (regex_match(input, match, show_existing_schematics)) {
+                controller.showAndLoadSchematic(circuit, loadedFilename);
+            } else if (regex_match(input, match, preanalysischeck)) {
                 controller.preAnalysisErrs(circuit);
-            } else if (regex_match(input, match, check_matrix)){
+            } else if (regex_match(input, match, check_matrix)) {
                 controller.checkMatrix(circuit);
-            }
-            else if (regex_match(input, match, DC_Analaysis)){
-                if(!controller.preAnalysisErrs(circuit))
+            } else if (regex_match(input, match, DC_Analaysis)) {
+                if (!controller.preAnalysisErrs(circuit))
                     continue;
                 controller.DCAnalysis(circuit);
-            }
-            else if(regex_match(input, match, DCSweep)){
-                string source=match[1];
+            } else if (regex_match(input, match, DCSweep)) {
+                string source = match[1];
 
                 double start;
                 double stop;
                 double increament;
-                string type=match[5].str();
-                string nolement=match[6].str();
+                string type = match[5].str();
+                string nolement = match[6].str();
                 try {
-                    start=stod(match[2].str());
-                    stop=stod(match[3].str());
-                    increament=stod(match[4].str());
+                    start = stod(match[2].str());
+                    stop = stod(match[3].str());
+                    increament = stod(match[4].str());
                 } catch (const invalid_argument &e) {
                     cout << "Error: Invalid numeric value\n";
                     continue;
                 }
-                if(!controller.preAnalysisErrs(circuit))
+                if (!controller.preAnalysisErrs(circuit))
                     continue;
                 controller.DCSweep(source, start, stop, increament, type, nolement, circuit);
             }
-            else if(regex_match(input, match, transient)){
+
+            else if (regex_match(input, match, multipleDCSweep)){
+                regex probePattern(R"([IV]\(\S+\))", regex::icase);
+                sregex_iterator it(input.begin(), input.end(), probePattern);
+                sregex_iterator end;
+                vector<string> probes;
+                while (it != end) {
+                    probes.push_back(it->str());
+                    ++it;
+                }
+                controller.multipleDCSweep(probes, match[1], stod(match[2]), stod(match[3]), stod(match[4]), circuit);
+            }
+
+            else if (regex_match(input, match, multipleTRAN)){
+                regex probePattern(R"([IV]\(\S+\))", regex::icase);
+                sregex_iterator it(input.begin(), input.end(), probePattern);
+                sregex_iterator end;
+                vector<string> probes;
+                while (it != end) {
+                    probes.push_back(it->str());
+                    ++it;
+                }
+                controller.multipleTransient(probes, stod(match[1]), stod(match[2]), stod(match[3]), circuit);
+            }
+
+            else if (regex_match(input, match, transient)) {
                 double start;
                 double stop;
                 double increament;
-                string type=match[4].str();
-                string nolement=match[5].str();
+                string type = match[4].str();
+                string nolement = match[5].str();
                 try {
-                    start=stod(match[1].str());
-                    stop=stod(match[2].str());
-                    increament=stod(match[3].str());
+                    start = stod(match[1].str());
+                    stop = stod(match[2].str());
+                    increament = stod(match[3].str());
                 } catch (const invalid_argument &e) {
                     cout << "Error: Invalid numeric value\n";
                     continue;
                 }
-                if(!controller.preAnalysisErrs(circuit))
+                if (!controller.preAnalysisErrs(circuit))
                     continue;
-                controller.TransientAnalysis( start, stop, increament, type, nolement, circuit);
+                controller.TransientAnalysis(start, stop, increament, type, nolement, circuit);
 
-            }
-            else if (regex_match(input, match, reset)) {
+            } else if (regex_match(input, match, reset)) {
                 circuit->reset();
                 cout << "A new schematic is created!\nStart again!\n";
-            }
-            else if (regex_match(input, match, exit)) {
+            } else if (regex_match(input, match, exit)) {
                 cout << "Bye Bye!\n";
                 return;
             } else
@@ -3408,7 +3550,7 @@ public:
     }
 };
 
-int main(){
+int main() {
     View view;
     view.run();
     return 0;

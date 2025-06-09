@@ -225,13 +225,15 @@ public:
 
     }
 
+    string getCategory() override { return "Inductor"; }
+
     void stamp(vector<vector<double>> &A,
                vector<double> &b,
                map<string, int> &nodeToIndex,
                int &voltageIndex,
                map<Element *, int> &currentIndexmap) override {
         double dt = 1e-3;
-        double g = dt/value;
+        double g = value / dt;
         int vIdx = currentIndexmap[this];
 
         string n1 = node1->getName();
@@ -389,7 +391,7 @@ public:
         int N = index;
         int M = 0;
         for (auto element: elements) {
-            if (element->getCategory() == "Voltage Source")
+            if (element->getCategory() == "Voltage Source" || element->getCategory() == "Controlled Voltage Source" || element->getCategory() == "Inductor")
                 M++;
         }
         int size = M + N;
@@ -397,7 +399,7 @@ public:
         vector<double> b(size, 0.0);
         int voltageindex = nodetoindex.size();
         for (auto element: elements) {
-            if (element->getCategory() == "Voltage Source" || element->getCategory() == "Controlled Voltage Source")
+            if (element->getCategory() == "Voltage Source" || element->getCategory() == "Controlled Voltage Source" || element->getCategory() == "Inductor")
                 currentIndexmap[element] = voltageindex++;
         }
         for (auto element: elements) {
@@ -864,12 +866,12 @@ public:
         int n = hasN4 ? nodeToIndex[controlNode2->getName()] : -1;
 
         if (hasN1) {
-            A[i][vIdx] -= 1;
-            A[vIdx][i] -= 1;
+            A[i][vIdx] += 1;
+            A[vIdx][i] += 1;
         }
         if (hasN2) {
-            A[j][vIdx] += 1;
-            A[vIdx][j] += 1;
+            A[j][vIdx] -= 1;
+            A[vIdx][j] -= 1;
         }
         if (hasN3 && hasN4) {
             A[vIdx][m] -= gain;
@@ -919,12 +921,12 @@ public:
         int j = hasN2 ? nodeToIndex[node2->getName()] : -1;
 
         if (hasN1) {
-            A[i][vIdx] -= 1;
-            A[vIdx][i] -= 1;
+            A[i][vIdx] += 1;
+            A[vIdx][i] += 1;
         }
         if (hasN2) {
-            A[j][vIdx] += 1;
-            A[vIdx][j] += 1;
+            A[j][vIdx] -= 1;
+            A[vIdx][j] -= 1;
         }
 
         A[vIdx][ctrlIdx] -= gain;
@@ -1299,8 +1301,8 @@ public:
             return "The nodes can NOT be the same!\n";
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
-        Node *cn1 = circuit->getCreateNode(node1);
-        Node *cn2 = circuit->getCreateNode(node2);
+        Node *cn1 = circuit->getCreateNode(controlNode1);
+        Node *cn2 = circuit->getCreateNode(controlNode2);
         Element *element = nullptr;
         element = new VCVS(name, gain, n1, n2, cn1, cn2);
         circuit->addElement(element);
@@ -2485,6 +2487,8 @@ public:
                     cap->updateVoltage(vcap);
                 }
             }
+
+
 
             if (abs(t - nextPrintTime) < delta_t / 2 || t >= endValue) {
                 cout << fixed << setprecision(3);

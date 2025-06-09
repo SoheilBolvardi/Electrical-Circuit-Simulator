@@ -3675,5 +3675,6 @@ public:
 int main() {
     View view;
     view.run();
+
     return 0;
 }

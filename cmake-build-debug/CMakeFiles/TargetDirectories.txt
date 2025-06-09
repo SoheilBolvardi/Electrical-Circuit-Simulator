@@ -1,0 +1,3 @@
+C:/Users/hasan.bo/Desktop/semester 2/OOP/OOP2025-Project/cmake-build-debug/CMakeFiles/OOPProject.dir
+C:/Users/hasan.bo/Desktop/semester 2/OOP/OOP2025-Project/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/hasan.bo/Desktop/semester 2/OOP/OOP2025-Project/cmake-build-debug/CMakeFiles/rebuild_cache.dir

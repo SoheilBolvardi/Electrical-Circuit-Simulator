@@ -1,0 +1,134 @@
+{
+	"kind" : "toolchains",
+	"toolchains" : 
+	[
+		{
+			"compiler" : 
+			{
+				"id" : "GNU",
+				"implicit" : 
+				{
+					"includeDirectories" : 
+					[
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc/mingw32/5.1.0/include",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/include",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc/mingw32/5.1.0/include-fixed"
+					],
+					"linkDirectories" : 
+					[
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc/mingw32/5.1.0",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/mingw32/lib",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib"
+					],
+					"linkFrameworkDirectories" : [],
+					"linkLibraries" : 
+					[
+						"mingw32",
+						"gcc",
+						"moldname",
+						"mingwex",
+						"pthread",
+						"advapi32",
+						"shell32",
+						"user32",
+						"kernel32",
+						"mingw32",
+						"gcc",
+						"moldname",
+						"mingwex"
+					]
+				},
+				"path" : "C:/Users/hasan.bo/Downloads/MinGW/MinGW/bin/gcc.exe",
+				"version" : "5.1.0"
+			},
+			"language" : "C",
+			"sourceFileExtensions" : 
+			[
+				"c",
+				"m"
+			]
+		},
+		{
+			"compiler" : 
+			{
+				"id" : "GNU",
+				"implicit" : 
+				{
+					"includeDirectories" : 
+					[
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc/mingw32/5.1.0/include/c++",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc/mingw32/5.1.0/include/c++/mingw32",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc/mingw32/5.1.0/include/c++/backward",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc/mingw32/5.1.0/include",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/include",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc/mingw32/5.1.0/include-fixed"
+					],
+					"linkDirectories" : 
+					[
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc/mingw32/5.1.0",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/mingw32/lib",
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib"
+					],
+					"linkFrameworkDirectories" : [],
+					"linkLibraries" : 
+					[
+						"C:/Users/hasan.bo/Downloads/MinGW/MinGW/lib/gcc/mingw32/5.1.0/libstdc++.a",
+						"mingw32",
+						"gcc",
+						"moldname",
+						"mingwex",
+						"pthread",
+						"advapi32",
+						"shell32",
+						"user32",
+						"kernel32",
+						"mingw32",
+						"gcc",
+						"moldname",
+						"mingwex"
+					]
+				},
+				"path" : "C:/Users/hasan.bo/Downloads/MinGW/MinGW/bin/c++.exe",
+				"version" : "5.1.0"
+			},
+			"language" : "CXX",
+			"sourceFileExtensions" : 
+			[
+				"C",
+				"M",
+				"c++",
+				"cc",
+				"cpp",
+				"cxx",
+				"mm",
+				"mpp",
+				"CPP",
+				"ixx",
+				"cppm",
+				"ccm",
+				"cxxm",
+				"c++m"
+			]
+		},
+		{
+			"compiler" : 
+			{
+				"implicit" : {},
+				"path" : "C:/Users/hasan.bo/Downloads/MinGW/MinGW/bin/windres.exe"
+			},
+			"language" : "RC",
+			"sourceFileExtensions" : 
+			[
+				"rc",
+				"RC"
+			]
+		}
+	],
+	"version" : 
+	{
+		"major" : 1,
+		"minor" : 0
+	}
+}

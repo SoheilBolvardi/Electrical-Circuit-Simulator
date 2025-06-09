@@ -2452,9 +2452,6 @@ public:
         int totalSteps = (int)((endValue - startValue) / delta_t) + 1;
         double nextPrintTime = startValue;
 
-//        int steps = static_cast<int>((endValue - startValue) / increment) + 1;
-//        double originalValue = 0;
-
         cout << "========== Transient Analysis ==========\n";
         cout << "Analyzing: " << (type == "V" ? "V(" + target + ")" : "I(" + target + ")") << endl;
 
@@ -2515,82 +2512,6 @@ public:
         }
 
         cout << "========================================\n";
-
-//        for (int step = 0; step < steps; ++step) {
-//            double t = startValue + step * increment;
-//
-//            for (Element *e: circuit->getElements()) {
-//                if (auto *vs = dynamic_cast<VoltageSource *>(e)) {
-//                    e->updateTime(t);
-//                } else if (auto *cs = dynamic_cast<CurrentSource *>(e)) {
-//                    e->updateTime(t);
-//                }
-//            }
-//            circuit->BuildMNA();
-//            vector<vector<double>> A = circuit->getMatrix();
-//            vector<double> b = circuit->getRHS();
-//            vector<double> solution = gaussianElimination(A, b);
-//            for (int i = 0; i < circuit->ordernodes.size(); ++i) {
-//                circuit->ordernodes[i]->setVoltage(solution[i]);
-//            }
-//            for (Element *e: circuit->getElements()) {
-//                if (circuit->currentIndexmap.count(e)) {
-//                    int idx = circuit->currentIndexmap[e];
-//                    e->setCurrent(solution[idx]);
-//                }
-//            }
-//
-//            for (Element *e: circuit->getElements()){
-//                if (auto* cap = dynamic_cast<Capacitor*>(e)) {
-//                    double vcap = cap->getFirstNode()->getVoltage() - cap->getSecondNode()->getVoltage();
-//                    cap->updateVoltage(vcap);
-//                }
-//            }
-//
-//            cout << fixed << setprecision(3);
-//            cout << "t = " << t << " s : ";
-//
-//            if (type == "V") {
-//                if (!circuit->getNodeAccess().count(target)) {
-//                    cout << "Node " << target << " not found in the circuit" << endl;
-//                    return;
-//                }
-//                bool found = false;
-//                for (auto *n: circuit->ordernodes) {
-//                    if (n->getName() == target) {
-//                        cout << "V(" << target << ") = " << fixed << setprecision(3) << n->getVoltage() << " V";
-//                        found = true;
-//                        break;
-//                    }
-//                }
-//                if (!found) cout << "Error: node " << target << " not found";
-//            } else if (type == "I") {
-//                bool found = false;
-//                Element *analyzedElement = nullptr;
-//                for (auto &element: circuit->getElements()) {
-//                    if (element->getName() == target) {
-//                        analyzedElement = element;
-//                        break;
-//                    }
-//                }
-//
-//                if (!analyzedElement) {
-//                    cout << "Component " << target << " not found in the circuit" << endl;
-//                    return;
-//                }
-//                for (auto *e: circuit->getElements()) {
-//                    if (e->getName() == target) {
-//                        cout << "I(" << target << ") = " << fixed << setprecision(3) << e->getCurrent() << " A";
-//                        found = true;
-//                        break;
-//                    }
-//                }
-//                if (!found) cout << "Error: element " << target << " not found";
-//            }
-//
-//            cout << endl;
-//        }
-//        cout << "========================================\n";
     }
 
     void multipleTransient(vector<string> &probes, double startValue, double endValue, double increment, Circuit* circuit) {

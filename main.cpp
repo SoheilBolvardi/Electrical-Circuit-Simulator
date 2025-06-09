@@ -1121,6 +1121,8 @@ public:
                 return "Error: Cannot delete capacitor; component not found\n";
             case 'D':
                 return "Error: Cannot delete diode; component not found\n";
+            default:
+                return "Element not found!\n";
         }
     }
 
@@ -2851,7 +2853,7 @@ public:
                     controller.saveCircuitToFile(circuit, loadedFilename);
                 }
             } else if (regex_match(input, match, remove_element)) {
-                if (match[1] != "R" && match[1] != "L" && match[1] != "C" && match[1] != "D") {
+                if (match[1] != "R" && match[1] != "L" && match[1] != "C" && match[1] != "D" && match[1] != "V" && match[1] != "I" ) {
                     cout << "Element " << match[1] << " not found in library\n";
                     continue;
                 }

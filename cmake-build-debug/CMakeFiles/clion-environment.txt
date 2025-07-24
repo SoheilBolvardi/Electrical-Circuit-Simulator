@@ -1,5 +1,0 @@
-ToolSet: 3.20 (local)@C:\Users\hasan.bo\Downloads\MinGW\MinGW
-Ninja: 1.12.1@C:\Program Files\JetBrains\CLion 2024.3.3\bin\ninja\win\x64\ninja.exe
-Options: 
-
-Options:-DCMAKE_MAKE_PROGRAM=C:/Program Files/JetBrains/CLion 2024.3.3/bin/ninja/win/x64/ninja.exe

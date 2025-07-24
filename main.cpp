@@ -9,6 +9,39 @@
 
 using namespace std;
 
+vector<complex<double>> solveComplexSystem(vector<vector<complex<double>>> A, vector<complex<double>> b) {
+    int n = b.size();
+    vector<complex<double>> x(n, 0.0);
+    for (int i = 0; i < n; ++i) {
+        int pivot = i;
+        for (int row = i + 1; row < n; ++row) {
+            if (abs(A[row][i]) > abs(A[pivot][i])) {
+                pivot = row;
+            }
+        }
+        if (abs(A[pivot][i]) < 1e-12) {
+            throw runtime_error("Matrix is singular or nearly singular");
+        }
+        swap(A[i], A[pivot]);
+        swap(b[i], b[pivot]);
+        for (int row = i + 1; row < n; ++row) {
+            complex<double> factor = A[row][i] / A[i][i];
+            for (int col = i; col < n; ++col) {
+                A[row][col] -= factor * A[i][col];
+            }
+            b[row] -= factor * b[i];
+        }
+    }
+    for (int i = n - 1; i >= 0; --i) {
+        complex<double> sum = b[i];
+        for (int col = i + 1; col < n; ++col) {
+            sum -= A[i][col] * x[col];
+        }
+        x[i] = sum / A[i][i];
+    }
+    return x;
+}
+
 vector<double> gaussianElimination(const vector<vector<double>> &A_in, const vector<double> &b_in) {
     int n = b_in.size();
     vector<vector<double>> A = A_in;
@@ -140,6 +173,13 @@ public:
 
     virtual void updateTime(double t) { currenttime = t; }
 
+    virtual void stampAC(vector<vector<complex<double>>> &A,
+                         vector<complex<double>> &b,
+                         map<string, int> &nodeToIndex,
+                         int &voltageIndex,
+                         map<Element *, int> &currentIndexmap,
+                         double omega) {}
+
     virtual ~Element() = default;
 };
 
@@ -187,6 +227,27 @@ public:
         } else if (hasN2) {
             A[j][j] += g;
             b[j] -= i_eq;
+        }
+    }
+
+    void stampAC(vector<vector<complex<double>>> &A,
+                 vector<complex<double>> &b,
+                 map<string, int> &nodeToIndex,
+                 int &voltageIndex,
+                 map<Element *, int> &currentIndexmap,
+                 double omega) override {
+        bool hasN1 = !node1->isGroundd();
+        bool hasN2 = !node2->isGroundd();
+        int i = hasN1 ? nodeToIndex[node1->getName()] : -1;
+        int j = hasN2 ? nodeToIndex[node2->getName()] : -1;
+
+        complex<double> Y = complex<double>(0, omega * getValue());
+
+        if (hasN1) A[i][i] += Y;
+        if (hasN2) A[j][j] += Y;
+        if (hasN1 && hasN2) {
+            A[i][j] -= Y;
+            A[j][i] -= Y;
         }
     }
 
@@ -288,6 +349,26 @@ public:
             A[jp][jp] += g;
         }
     }
+
+    void stampAC(vector<vector<complex<double>>> &A,
+                 vector<complex<double>> &b,
+                 map<string, int> &nodeToIndex,
+                 int &voltageIndex,
+                 map<Element *, int> &currentIndexmap,
+                 double omega) override {
+        int i = node1->isGroundd() ? -1 : nodeToIndex[node1->getName()];
+        int j = node2->isGroundd() ? -1 : nodeToIndex[node2->getName()];
+
+        complex<double> Z = complex<double>(0, omega * getValue());
+
+        if (i != -1) A[i][i] += 1.0 / Z;
+        if (j != -1) A[j][j] += 1.0 / Z;
+        if (i != -1 && j != -1) {
+            A[i][j] -= 1.0 / Z;
+            A[j][i] -= 1.0 / Z;
+        }
+    }
+
     void updateCurrent(double i){
         curr_last= i;
     }
@@ -299,6 +380,155 @@ public:
     double getCurrLast() {return curr_last;}
 };
 
+class VoltageSource : public Element {
+protected:
+    double currenttime = 0;
+public:
+    VoltageSource(string name_, double value_, Node *n1, Node *n2)
+            : Element(name_, value_, n1, n2) {}
+
+    virtual double getVoltage(double time) = 0;
+
+    string getType() override { return "Voltage Source"; }
+
+    string getCategory() override { return "Voltage Source"; }
+
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexmap) override {
+        bool hasN1 = !node1->isGroundd();
+        bool hasN2 = !node2->isGroundd();
+        int vIdx = currentIndexmap[this];
+        if (hasN1) {
+            int i = nodeToIndex[node1->getName()];
+            A[i][vIdx] -= 1;
+            A[vIdx][i] -= 1;
+        }
+        if (hasN2) {
+            int j = nodeToIndex[node2->getName()];
+            A[j][vIdx] += 1;
+            A[vIdx][j] += 1;
+        }
+        b[vIdx] += getValue();
+    }
+
+    double getCurrent() override {
+        return current;
+    }
+};
+
+class DCVoltageSource : public VoltageSource {
+public:
+    DCVoltageSource(string name_, double value_, Node *n1, Node *n2)
+            : VoltageSource(name_, value_, n1, n2) {}
+
+    double getVoltage(double time) override {
+        return getValue();
+    }
+
+    string getType() override { return "VDC"; }
+
+    double getCurrent() override {
+        return current;
+    }
+};
+
+class ACVoltageSource : public VoltageSource {
+    double amplitude;
+public:
+    ACVoltageSource(string name, Node* n1, Node* n2, double amp)
+            : VoltageSource(name, 0.0,  n1, n2), amplitude(amp) {}
+
+    string getType() override { return "VAC"; }
+
+    double getVoltage(double time) override {
+        return amplitude;
+    }
+
+    void stampAC(vector<vector<complex<double>>> &A,
+                 vector<complex<double>> &b,
+                 map<string, int> &nodeToIndex,
+                 int &voltageIndex,
+                 map<Element *, int> &currentIndexmap,
+                 double omega) override {
+        bool hasN1 = !node1->isGroundd();
+        bool hasN2 = !node2->isGroundd();
+        int vIdx = currentIndexmap[this];
+        if (hasN1) {
+            int i = nodeToIndex[node1->getName()];
+            A[i][vIdx] -= complex<double>(1, 0);
+            A[vIdx][i] -= complex<double>(1, 0);
+        }
+        if (hasN2) {
+            int j = nodeToIndex[node2->getName()];
+            A[j][vIdx] += complex<double>(1, 0);
+            A[vIdx][j] += complex<double>(1, 0);
+        }
+        b[vIdx] += complex<double>(amplitude, 0);
+    }
+};
+
+class CurrentSource : public Element {
+public:
+    CurrentSource(string name_, double value_, Node *n1, Node *n2)
+            : Element(name_, value_, n1, n2) {}
+
+    virtual double getCurrent(double time) = 0;
+
+    string getType() override { return "Current Source"; }
+
+    void stamp(vector<vector<double>> &A,
+               vector<double> &b,
+               map<string, int> &nodeToIndex,
+               int &voltageIndex,
+               map<Element *, int> &currentIndexMap) override {
+        bool hasN1 = nodeToIndex.count(node1->getName());
+        bool hasN2 = nodeToIndex.count(node2->getName());
+        double I = getValue();
+        if (hasN1)
+            b[nodeToIndex[node1->getName()]] -= I;
+        if (hasN2)
+            b[nodeToIndex[node2->getName()]] += I;
+
+    }
+};
+
+class ACCurrentSource : public CurrentSource {
+private:
+    double phase;
+    double amplitude;
+public:
+    ACCurrentSource(string name_, double amplitude_, Node* n1, Node* n2)
+            : CurrentSource(name_, amplitude_, n1, n2), amplitude(amplitude_), phase(0) {}
+
+
+    double getValue() override { return amplitude; }
+
+    void stampAC(vector<vector<complex<double>>> &A,
+                 vector<complex<double>> &b,
+                 map<string, int> &nodeToIndex,
+                 int &voltageIndex,
+                 map<Element*, int> &currentIndexmap,
+                 double omega) override {
+        int i = node1->isGroundd() ? -1 : nodeToIndex[node1->getName()];
+        int j = node2->isGroundd() ? -1 : nodeToIndex[node2->getName()];
+
+        complex<double> I = polar(amplitude, phase);
+
+        if (i != -1) b[i] -= I;
+        if (j != -1) b[j] += I;
+    }
+
+    string getType() override {
+        return "ACCurrentSource";
+    }
+
+    double getCurrent(double time) override {
+        return amplitude;
+    }
+};
 
 class Circuit {
 protected:
@@ -322,6 +552,12 @@ public:
 
     void setDeltat(double dt){deltat=dt;}
     double getDeltat() {return deltat;}
+
+    vector<vector<complex<double>>> A_ac;
+    vector<complex<double>> b_ac;
+
+    vector<vector<complex<double>>> getComplexMatrix() const { return A_ac; }
+    vector<complex<double>> getComplexRHS() const { return b_ac; }
 
     void setType(string type){Analysistype=type;}
 
@@ -420,6 +656,54 @@ public:
         this->b = b;
     }
 
+    void BuildACMNA(double omega) {
+        nodetoindex.clear();
+        ordernodes.clear();
+        currentIndexmap.clear();
+
+        int index = 0;
+        for (Node* node : nodes) {
+            if (!node->isGroundd()) {
+                nodetoindex[node->getName()] = index;
+                ordernodes.push_back(node);
+                index++;
+            }
+        }
+
+        int N = index;
+        int M = 0;
+        for (auto element: elements) {
+            if (element->getCategory() == "Voltage Source" ||
+                element->getCategory() == "Controlled Voltage Source")
+                M++;
+        }
+
+        int size = N + M;
+        A_ac.assign(size, vector<complex<double>>(size, {0.0, 0.0}));
+        b_ac.assign(size, {0.0, 0.0});
+
+        int voltageIndex = nodetoindex.size();
+        for (auto element: elements) {
+            if (element->getCategory() == "Voltage Source" ||
+                element->getCategory() == "Controlled Voltage Source")
+                currentIndexmap[element] = voltageIndex++;
+        }
+
+        for (auto* element : elements) {
+            if (auto* acsrc = dynamic_cast<ACVoltageSource*>(element)) {
+                acsrc->stampAC(A_ac, b_ac, nodetoindex, voltageIndex, currentIndexmap, omega);
+            } else if (auto* c = dynamic_cast<Capacitor*>(element)) {
+                c->stampAC(A_ac, b_ac, nodetoindex, voltageIndex, currentIndexmap, omega);
+            } else if (auto* l = dynamic_cast<Inductor*>(element)) {
+                l->stampAC(A_ac, b_ac, nodetoindex, voltageIndex, currentIndexmap, omega);
+            } else if (auto* iacsrc = dynamic_cast<ACCurrentSource*>(element)) {
+                iacsrc->stampAC(A_ac, b_ac, nodetoindex, voltageIndex, currentIndexmap, omega);
+            } else {
+                element->stampAC(A_ac, b_ac, nodetoindex, voltageIndex, currentIndexmap, omega);
+            }
+        }
+    }
+
     void reset() {
         for (auto e: elements) delete e;
         for (auto n: nodes) delete n;
@@ -497,6 +781,26 @@ public:
             A[jp][jp] += g;
         }
     }
+
+    void stampAC(vector<vector<complex<double>>> &A,
+                 vector<complex<double>> &b,
+                 map<string, int> &nodeToIndex,
+                 int &voltageIndex,
+                 map<Element *, int> &currentIndexmap,
+                 double omega) override {
+        bool hasN1 = !node1->isGroundd();
+        bool hasN2 = !node2->isGroundd();
+        int i = hasN1 ? nodeToIndex[node1->getName()] : -1;
+        int j = hasN2 ? nodeToIndex[node2->getName()] : -1;
+        complex<double> conductance = 1.0 / getValue();
+
+        if (hasN1) A[i][i] += conductance;
+        if (hasN2) A[j][j] += conductance;
+        if (hasN1 && hasN2) {
+            A[i][j] -= conductance;
+            A[j][i] -= conductance;
+        }
+    }
 };
 
 class Diode : public Element {
@@ -548,61 +852,6 @@ public:
                map<string, int> &nodeToIndex,
                int &voltageIndex,
                map<Element *, int> &currentIndexmap) override {
-    }
-};
-
-class VoltageSource : public Element {
-protected:
-    double currenttime = 0;
-public:
-    VoltageSource(string name_, double value_, Node *n1, Node *n2)
-            : Element(name_, value_, n1, n2) {}
-
-    virtual double getVoltage(double time) = 0;
-
-    string getType() override { return "Voltage Source"; }
-
-    string getCategory() override { return "Voltage Source"; }
-
-    void stamp(vector<vector<double>> &A,
-               vector<double> &b,
-               map<string, int> &nodeToIndex,
-               int &voltageIndex,
-               map<Element *, int> &currentIndexmap) override {
-        bool hasN1 = !node1->isGroundd();
-        bool hasN2 = !node2->isGroundd();
-        int vIdx = currentIndexmap[this];
-        if (hasN1) {
-            int i = nodeToIndex[node1->getName()];
-            A[i][vIdx] -= 1;
-            A[vIdx][i] -= 1;
-        }
-        if (hasN2) {
-            int j = nodeToIndex[node2->getName()];
-            A[j][vIdx] += 1;
-            A[vIdx][j] += 1;
-        }
-        b[vIdx] += getValue();
-    }
-
-    double getCurrent() override {
-        return current;
-    }
-};
-
-class DCVoltageSource : public VoltageSource {
-public:
-    DCVoltageSource(string name_, double value_, Node *n1, Node *n2)
-            : VoltageSource(name_, value_, n1, n2) {}
-
-    double getVoltage(double time) override {
-        return getValue();
-    }
-
-    string getType() override { return "VDC"; }
-
-    double getCurrent() override {
-        return current;
     }
 };
 
@@ -697,31 +946,6 @@ public:
     }
 
     string getType() override { return "VPULSE"; }
-};
-
-class CurrentSource : public Element {
-public:
-    CurrentSource(string name_, double value_, Node *n1, Node *n2)
-            : Element(name_, value_, n1, n2) {}
-
-    virtual double getCurrent(double time) = 0;
-
-    string getType() override { return "Current Source"; }
-
-    void stamp(vector<vector<double>> &A,
-               vector<double> &b,
-               map<string, int> &nodeToIndex,
-               int &voltageIndex,
-               map<Element *, int> &currentIndexMap) override {
-        bool hasN1 = nodeToIndex.count(node1->getName());
-        bool hasN2 = nodeToIndex.count(node2->getName());
-        double I = getValue();
-        if (hasN1)
-            b[nodeToIndex[node1->getName()]] -= I;
-        if (hasN2)
-            b[nodeToIndex[node2->getName()]] += I;
-
-    }
 };
 
 class DCCurrentSource : public CurrentSource {
@@ -901,6 +1125,8 @@ public:
 
     Element *getcontrolElement() { return controlElement; }
 
+    string getCategory() override { return "Controlled Voltage Source"; }
+
     string getType() override {
         return "CCVS";
     }
@@ -1006,6 +1232,8 @@ public:
     }
 
     Element *getcontrolElement() { return controlElement; }
+
+    string getCategory() override { return "Controlled Current Source"; }
 
     string getType() override {
         return "CCCS";
@@ -2539,7 +2767,139 @@ public:
         }
     }
 
+    string addACVoltageSource(string node1, string node2, double amp, Circuit *circuit) {
+        if (node1 == node2)
+            return "The nodes can NOT be the same!\n";
+        for (auto element: circuit->getElements()) {
+            if (!element)
+                continue;
+            if (element->getName().substr(0,2) == "AC") {
+                return "AC source already exists! you can't add more than one\n";
+            }
+        }
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        Element *element = nullptr;
+        element=new ACVoltageSource("AC Voltage", n1, n2, amp);
+        circuit->addElement(element);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return "AC Voltage added successfully!\n";
+    }
 
+    string addACCurrentSource(string node1, string node2, double amp, Circuit *circuit) {
+        if (node1 == node2)
+            return "The nodes can NOT be the same!\n";
+        for (auto element: circuit->getElements()) {
+            if (!element)
+                continue;
+            if (element->getName().substr(0,2) == "AC") {
+                return "AC source already exists! you can't add more than one\n";
+            }
+        }
+        Node *n1 = circuit->getCreateNode(node1);
+        Node *n2 = circuit->getCreateNode(node2);
+        Element *element = nullptr;
+        element=new ACCurrentSource("AC Current", amp, n1, n2);
+        circuit->addElement(element);
+        element->getFirstNode()->addConnectedElement(element);
+        element->getSecondNode()->addConnectedElement(element);
+        return "AC Current added successfully!\n";
+    }
+
+    void ACAnalysis(double omegaStart, double omegaStop, int steps,
+                    string type, string target, Circuit* circuit) {
+        circuit->setType("AC");
+        circuit->clear();
+
+        if (type == "V" && !circuit->getNodeAccess().count(target)) {
+            cout << "Error: Node " << target << " not found in the circuit\n";
+            return;
+        } else if (type == "I") {
+            bool found = false;
+            for (auto &element: circuit->getElements()) {
+                if (element->getName() == target) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                cout << "Error: Element " << target << " not found in the circuit\n";
+                return;
+            }
+        }
+        cout << "========== AC Analysis ==========\n";
+        cout << "Analyzing: " << (type == "V" ? "V(" + target + ")" : "I(" + target + ")") << endl;
+        for (int i = 0; i <= steps; ++i) {
+            double omega = omegaStart + i * (omegaStop - omegaStart) / steps;
+            circuit->BuildACMNA(omega);
+            auto A = circuit->getComplexMatrix();
+            auto b = circuit->getComplexRHS();
+            auto x = solveComplexSystem(A, b);
+            cout << fixed << setprecision(3);
+            cout << "w = " << omega << " rad/s : ";
+            if (type == "V") {
+                for (int i = 0; i < circuit->ordernodes.size(); ++i) {
+                    if (circuit->ordernodes[i]->getName() == target) {
+                        double magnitude = abs(x[i]);
+                        double phase= arg(x[i]) * 180.0 / M_PI;
+                        if(fabs(magnitude) < 1e-3)
+                            magnitude= 0.0;
+                        if(fabs(phase) < 1e-3)
+                            phase=0.0;
+                        cout << "|V(" << target << ")| = " << magnitude << " V, "
+                             << "phase = " << phase << " degrees";
+                        break;
+                    }
+                }
+            } else if (type == "I") {
+                for (auto* e : circuit->getElements()) {
+                    if (e->getName() == target) {
+                        complex<double> current;
+                        if (circuit->currentIndexmap.count(e)) {
+                            current = x[circuit->currentIndexmap[e]];
+                        } else {
+                            string n1 = e->getFirstNode()->getName();
+                            string n2 = e->getSecondNode()->getName();
+                            double value = e->getValue();
+                            complex<double> v1 = {0, 0}, v2 = {0, 0};
+
+                            if (circuit->nodetoindex.count(n1))
+                                v1 = x[circuit->nodetoindex.at(n1)];
+                            if (circuit->nodetoindex.count(n2))
+                                v2 = x[circuit->nodetoindex.at(n2)];
+                            if (e->getType() == "Resistor") {
+                                current = (v1 - v2) / value;
+                            } else if (e->getType() == "Capacitor") {
+                                current = (v1 - v2) * complex<double>(0, value * omega);
+                            } else if (e->getType() == "Inductor") {
+                                current = (v1 - v2) / complex<double>(0, omega * value);
+                            } else {
+                                cout << "Cannot compute current for element type: " << e->getCategory() << endl;
+                                return;
+                            }
+                        }
+
+                        double magnitude = abs(current);
+                        double phase = arg(current) * 180.0 / M_PI;
+                        if(phase<0)
+                            phase+=180;
+                        else if(phase>0)
+                            phase-=180;
+                        if (fabs(magnitude) < 1e-3)
+                            magnitude = 0.0;
+                        if (fabs(phase) < 1e-3)
+                            phase = 0.0;
+                        cout << "|I(" << target << ")| = " << magnitude << " A, "
+                             << "phase = " << phase << " degrees";
+                        break;
+                    }
+                }
+            }
+            cout << endl;
+        }
+        cout << "=================================\n";
+    }
 
 };
 
@@ -2588,10 +2948,101 @@ public:
         regex multipleTRAN(R"(^\.TRAN\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+[IV]\(\S+\)){2,}\s*$)", regex::icase);
         regex transient(R"(^\s*\.TRAN\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
         regex reset(R"(^reset)");
+        regex VAC(R"(^\s*add\s+AC\s+Voltage\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
+        regex CAC(R"(^\s*add\s+AC\s+Current\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
+        regex ACsweep(R"(^\s*\.AC\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
         regex exit(R"(^exit$)");
         while (true) {
             getline(cin, input);
-            if (regex_match(input, match, addDCSource)) {
+            if(regex_match(input, match, VAC)){
+                string node1 = match[1].str();
+                string node2 = match[2].str();
+                string number = match[3].str();
+                string unit = match[4].str();
+                double value;
+                try {
+                    value = stod(number);
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value\n";
+                    continue;
+                }
+                string error = controller.handleError("AC Voltage", circuit, value);
+                if (error != "") {
+                    cout << error;
+                    continue;
+                }
+                if (!unit.empty()) {
+                    switch (unit[0]) {
+                        case 'G':
+                            value *= 1e9;
+                            break;
+                        case 'M':
+                            value *= 1e6;
+                            break;
+                        case 'k':
+                        case 'K':
+                            value *= 1e3;
+                            break;
+                        case 'm':
+                            value *= 1e-3;
+                            break;
+                        case 'u':
+                            value *= 1e-6;
+                            break;
+                        case 'n':
+                            value *= 1e-9;
+                            break;
+                    }
+                }
+                cout<<controller.addACVoltageSource(node1, node2, value, circuit);
+                if (!loadedFilename.empty()) {
+                    controller.saveCircuitToFile(circuit, loadedFilename);
+                }
+            } else if(regex_match(input, match, CAC)){
+                string node1 = match[1].str();
+                string node2 = match[2].str();
+                string number = match[3].str();
+                string unit = match[4].str();
+                double value;
+                try {
+                    value = stod(number);
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value\n";
+                    continue;
+                }
+                string error = controller.handleError("AC Current", circuit, value);
+                if (error != "") {
+                    cout << error;
+                    continue;
+                }
+                if (!unit.empty()) {
+                    switch (unit[0]) {
+                        case 'G':
+                            value *= 1e9;
+                            break;
+                        case 'M':
+                            value *= 1e6;
+                            break;
+                        case 'k':
+                        case 'K':
+                            value *= 1e3;
+                            break;
+                        case 'm':
+                            value *= 1e-3;
+                            break;
+                        case 'u':
+                            value *= 1e-6;
+                            break;
+                        case 'n':
+                            value *= 1e-9;
+                            break;
+                    }
+                }
+                cout<<controller.addACCurrentSource(node1, node2, value, circuit);
+                if (!loadedFilename.empty()) {
+                    controller.saveCircuitToFile(circuit, loadedFilename);
+                }
+            } else if (regex_match(input, match, addDCSource)) {
                 string name = match[2].str();
                 string node1 = match[3].str();
                 string node2 = match[4].str();
@@ -3662,6 +4113,23 @@ public:
                     continue;
                 controller.TransientAnalysis(start, stop, increament, type, nolement, circuit);
 
+            } else if (regex_match(input, match, ACsweep)) {
+                double w_start;
+                double w_stop;
+                double N;
+                string type = match[4].str();
+                string nolement = match[5].str();
+                try {
+                    w_start = stod(match[1].str());
+                    w_stop = stod(match[2].str());
+                    N = stod(match[3].str());
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value\n";
+                    continue;
+                }
+                if (!controller.preAnalysisErrs(circuit))
+                    continue;
+                controller.ACAnalysis(w_start, w_stop, N, type, nolement, circuit);
             } else if (regex_match(input, match, reset)) {
                 circuit->reset();
                 cout << "A new schematic is created!\nStart again!\n";

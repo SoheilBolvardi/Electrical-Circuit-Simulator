@@ -5,6 +5,11 @@
 #include <unistd.h>
 #include <windows.h>
 #include <dirent.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL2_gfx.h>
+#include <SDL2/SDL_timer.h>
 
 
 using namespace std;
@@ -185,7 +190,7 @@ public:
 
 class Capacitor : public Element {
 private:
-    double volt_last=0;
+    double volt_last = 0;
 public:
     Capacitor(string name_, double value_, Node *n1, Node *n2)
             : Element(name_, value_, n1, n2) {}
@@ -252,25 +257,25 @@ public:
     }
 
 
-
-    void updateVoltage(double voltage){
-        volt_last=voltage;
+    void updateVoltage(double voltage) {
+        volt_last = voltage;
     }
 
     void DCstamp(vector<vector<double>> &A,
                  vector<double> &b,
                  map<string, int> &nodeToIndex,
                  int &voltageIndex,
-                 map<Element *, int> &currentIndexmap){
+                 map<Element *, int> &currentIndexmap) {
 
     }
-    double getVoltLast() {return volt_last;}
+
+    double getVoltLast() { return volt_last; }
 };
 
 class Inductor : public Element {
 private:
-    double curr_last=0;
-    double volt_last=0;
+    double curr_last = 0;
+    double volt_last = 0;
 public:
     Inductor(string name_, double value_, Node *n1, Node *n2)
             : Element(name_, value_, n1, n2) {}
@@ -326,11 +331,11 @@ public:
                  vector<double> &b,
                  map<string, int> &nodeToIndex,
                  int &voltageIndex,
-                 map<Element *, int> &currentIndexmap){
+                 map<Element *, int> &currentIndexmap) {
         int i = nodeToIndex[getFirstNode()->getName()];
         int j = nodeToIndex[getSecondNode()->getName()];
-        string n1= node1->getName();
-        string n2= node2->getName();
+        string n1 = node1->getName();
+        string n2 = node2->getName();
         double g = 1e9;
         bool hasN1 = !node1->isGroundd();
         bool hasN2 = !node2->isGroundd();
@@ -369,15 +374,15 @@ public:
         }
     }
 
-    void updateCurrent(double i){
-        curr_last= i;
+    void updateCurrent(double i) {
+        curr_last = i;
     }
 
     void updateCurrentFromVoltage(double vL, double dt) {
         curr_last += (dt / value) * vL;
     }
 
-    double getCurrLast() {return curr_last;}
+    double getCurrLast() { return curr_last; }
 };
 
 class VoltageSource : public Element {
@@ -438,8 +443,8 @@ public:
 class ACVoltageSource : public VoltageSource {
     double amplitude;
 public:
-    ACVoltageSource(string name, Node* n1, Node* n2, double amp)
-            : VoltageSource(name, 0.0,  n1, n2), amplitude(amp) {}
+    ACVoltageSource(string name, Node *n1, Node *n2, double amp)
+            : VoltageSource(name, 0.0, n1, n2), amplitude(amp) {}
 
     string getType() override { return "VAC"; }
 
@@ -500,7 +505,7 @@ private:
     double phase;
     double amplitude;
 public:
-    ACCurrentSource(string name_, double amplitude_, Node* n1, Node* n2)
+    ACCurrentSource(string name_, double amplitude_, Node *n1, Node *n2)
             : CurrentSource(name_, amplitude_, n1, n2), amplitude(amplitude_), phase(0) {}
 
 
@@ -510,7 +515,7 @@ public:
                  vector<complex<double>> &b,
                  map<string, int> &nodeToIndex,
                  int &voltageIndex,
-                 map<Element*, int> &currentIndexmap,
+                 map<Element *, int> &currentIndexmap,
                  double omega) override {
         int i = node1->isGroundd() ? -1 : nodeToIndex[node1->getName()];
         int j = node2->isGroundd() ? -1 : nodeToIndex[node2->getName()];
@@ -532,7 +537,7 @@ public:
 
 class Circuit {
 protected:
-    double deltat=1e-6;
+    double deltat = 1e-6;
     vector<Element *> elements;
     vector<Node *> nodes;
     map<string, Node *> node_access;
@@ -550,16 +555,18 @@ public:
     map<string, int> nodetoindex;
     vector<Node *> ordernodes;
 
-    void setDeltat(double dt){deltat=dt;}
-    double getDeltat() {return deltat;}
+    void setDeltat(double dt) { deltat = dt; }
+
+    double getDeltat() { return deltat; }
 
     vector<vector<complex<double>>> A_ac;
     vector<complex<double>> b_ac;
 
     vector<vector<complex<double>>> getComplexMatrix() const { return A_ac; }
+
     vector<complex<double>> getComplexRHS() const { return b_ac; }
 
-    void setType(string type){Analysistype=type;}
+    void setType(string type) { Analysistype = type; }
 
 
     Node *getCreateNode(string name) {
@@ -627,7 +634,8 @@ public:
         int N = index;
         int M = 0;
         for (auto element: elements) {
-            if (element->getCategory() == "Voltage Source" || element->getCategory() == "Controlled Voltage Source" || element->getCategory() == "Inductor")
+            if (element->getCategory() == "Voltage Source" || element->getCategory() == "Controlled Voltage Source" ||
+                element->getCategory() == "Inductor")
                 M++;
         }
         int size = M + N;
@@ -635,21 +643,21 @@ public:
         vector<double> b(size, 0.0);
         int voltageindex = nodetoindex.size();
         for (auto element: elements) {
-            if (element->getCategory() == "Voltage Source" || element->getCategory() == "Controlled Voltage Source" || element->getCategory() == "Inductor")
+            if (element->getCategory() == "Voltage Source" || element->getCategory() == "Controlled Voltage Source" ||
+                element->getCategory() == "Inductor")
                 currentIndexmap[element] = voltageindex++;
         }
         for (auto element: elements) {
             if (!element)
                 continue;
-            if(Analysistype=="DC"){
-                if(auto *cap = dynamic_cast<Capacitor *>(element))
+            if (Analysistype == "DC") {
+                if (auto *cap = dynamic_cast<Capacitor *>(element))
                     cap->DCstamp(A, b, nodetoindex, voltageindex, currentIndexmap);
-                else if(auto *ind = dynamic_cast<Inductor *>(element))
+                else if (auto *ind = dynamic_cast<Inductor *>(element))
                     ind->DCstamp(A, b, nodetoindex, voltageindex, currentIndexmap);
                 else
                     element->stamp(A, b, nodetoindex, voltageindex, currentIndexmap);
-            }
-            else
+            } else
                 element->stamp(A, b, nodetoindex, voltageindex, currentIndexmap);
         }
         this->A = A;
@@ -662,7 +670,7 @@ public:
         currentIndexmap.clear();
 
         int index = 0;
-        for (Node* node : nodes) {
+        for (Node *node: nodes) {
             if (!node->isGroundd()) {
                 nodetoindex[node->getName()] = index;
                 ordernodes.push_back(node);
@@ -689,14 +697,14 @@ public:
                 currentIndexmap[element] = voltageIndex++;
         }
 
-        for (auto* element : elements) {
-            if (auto* acsrc = dynamic_cast<ACVoltageSource*>(element)) {
+        for (auto *element: elements) {
+            if (auto *acsrc = dynamic_cast<ACVoltageSource *>(element)) {
                 acsrc->stampAC(A_ac, b_ac, nodetoindex, voltageIndex, currentIndexmap, omega);
-            } else if (auto* c = dynamic_cast<Capacitor*>(element)) {
+            } else if (auto *c = dynamic_cast<Capacitor *>(element)) {
                 c->stampAC(A_ac, b_ac, nodetoindex, voltageIndex, currentIndexmap, omega);
-            } else if (auto* l = dynamic_cast<Inductor*>(element)) {
+            } else if (auto *l = dynamic_cast<Inductor *>(element)) {
                 l->stampAC(A_ac, b_ac, nodetoindex, voltageIndex, currentIndexmap, omega);
-            } else if (auto* iacsrc = dynamic_cast<ACCurrentSource*>(element)) {
+            } else if (auto *iacsrc = dynamic_cast<ACCurrentSource *>(element)) {
                 iacsrc->stampAC(A_ac, b_ac, nodetoindex, voltageIndex, currentIndexmap, omega);
             } else {
                 element->stampAC(A_ac, b_ac, nodetoindex, voltageIndex, currentIndexmap, omega);
@@ -721,14 +729,14 @@ public:
 
     vector<double> getRHS() const { return b; }
 
-    void clear () {
-        for (auto* n : ordernodes) {
+    void clear() {
+        for (auto *n: ordernodes) {
             n->setVoltage(0);
         }
-        for (auto* e : elements) {
+        for (auto *e: elements) {
             e->setCurrent(0);
-            if (auto* c = dynamic_cast<Capacitor*>(e)) c->updateVoltage(0);
-            if (auto* l = dynamic_cast<Inductor*>(e)) l->updateCurrent(0);
+            if (auto *c = dynamic_cast<Capacitor *>(e)) c->updateVoltage(0);
+            if (auto *l = dynamic_cast<Inductor *>(e)) l->updateCurrent(0);
         }
     }
 
@@ -877,7 +885,7 @@ public:
 
     double getOffset() { return offset; }
 
-    double getAmp() {return amplitude;}
+    double getAmp() { return amplitude; }
 
     string getType() override { return "VSIN"; }
 
@@ -986,7 +994,7 @@ public:
         return value * sin(2 * M_PI * frequency * currenttime) + offset;
     }
 
-    double getAmp() {return amplitude;}
+    double getAmp() { return amplitude; }
 
     void updateTime(double t) override { currenttime = t; }
 
@@ -1262,6 +1270,8 @@ public:
         return current;
     }
 };
+
+TTF_Font* globalFont = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 18);
 
 class Controller {
 public:
@@ -1613,9 +1623,7 @@ public:
                 cout << "  |  Amplitude: " << vsin->getAmp()
                      << "  |  Frequency: " << vsin->getFrequency()
                      << "  |  Offset: " << vsin->getOffset();
-            }
-
-            else if (auto *vpulse = dynamic_cast<PulseVoltageSource *>(element)) {
+            } else if (auto *vpulse = dynamic_cast<PulseVoltageSource *>(element)) {
                 cout << "  |  V1: " << vpulse->getV1()
                      << "  |  V2: " << vpulse->getV2()
                      << "  |  TD: " << vpulse->getTD()
@@ -1623,15 +1631,11 @@ public:
                      << "  |  TOn: " << vpulse->getTOn()
                      << "  |  TF: " << vpulse->getTF()
                      << "  |  Period: " << vpulse->getPeriod();
-            }
-
-            else if (auto *isin = dynamic_cast<SinusoidalCurrentSource *>(element)) {
+            } else if (auto *isin = dynamic_cast<SinusoidalCurrentSource *>(element)) {
                 cout << "  |  Amplitude: " << isin->getAmp()
                      << "  |  Frequency: " << isin->getFrequency()
                      << "  |  Offset: " << isin->getOffset();
-            }
-
-            else if (auto *ipulse = dynamic_cast<PulseCurrentSource *>(element)) {
+            } else if (auto *ipulse = dynamic_cast<PulseCurrentSource *>(element)) {
                 cout << "  |  I1: " << ipulse->getI1()
                      << "  |  I2: " << ipulse->getI2()
                      << "  |  TD: " << ipulse->getTD()
@@ -1639,21 +1643,15 @@ public:
                      << "  |  TOn: " << ipulse->getTOn()
                      << "  |  TF: " << ipulse->getTF()
                      << "  |  Period: " << ipulse->getPeriod();
-            }
-
-            else if (auto *vcvs = dynamic_cast<VCVS *>(element)) {
+            } else if (auto *vcvs = dynamic_cast<VCVS *>(element)) {
                 cout << "  |  Gain: " << vcvs->getGain()
                      << "  |  Control Nodes: (" << vcvs->getControlNode1()->getName()
                      << ", " << vcvs->getControlNode2()->getName() << ")";
-            }
-
-            else if (auto *vccs = dynamic_cast<VCCS *>(element)) {
+            } else if (auto *vccs = dynamic_cast<VCCS *>(element)) {
                 cout << "  |  Gain: " << vccs->getGain()
                      << "  |  Control Nodes: (" << vccs->getControlNode1()->getName()
                      << ", " << vccs->getControlNode2()->getName() << ")";
-            }
-
-            else if (auto *cc = dynamic_cast<CCCS *>(element)) {
+            } else if (auto *cc = dynamic_cast<CCCS *>(element)) {
                 cout << "  |  Gain: " << cc->getGain()
                      << "  |  Controlled Element: " << cc->getcontrolElement()->getName();
             } else if (auto *cc = dynamic_cast<CCVS *>(element)) {
@@ -2471,7 +2469,7 @@ public:
                             loadedFilename = selectedName;
                             break;
                         }
-                    } catch (const invalid_argument& e) {
+                    } catch (const invalid_argument &e) {
                         cout << "-Error: Inappropriate input\n";
                     }
                 }
@@ -2637,16 +2635,114 @@ public:
         sweepElem->setValue(originalValue);
     }
 
-    void multipleDCSweep(vector<string> &probes, string sweptSource, double startValue, double endValue, double increment, Circuit* circuit){
-        for (auto& p : probes){
-            if (p[0]=='V'){
+    vector<pair<double, double>>
+    DCSweepData(const std::string &sweptSource, double startValue, double endValue, double inc,
+                string type, string targetName, Circuit *c) {
+        vector<pair<double, double>> data;
+        if (!preAnalysisErrs(c)) return data;
+
+        Element *sweepElem = nullptr;
+        for (auto *e: c->getElements())
+            if (e->getName() == sweptSource) {
+                sweepElem = e;
+                break;
+            }
+        if (!sweepElem) {
+            cout << "source not found\n";
+            return data;
+        }
+
+        double orig = sweepElem->getValue();
+
+        for (double v = startValue; v <= endValue + 1e-12; v += inc) {
+            sweepElem->setValue(v);
+            c->BuildMNA();
+            auto A = c->getMatrix();
+            auto b = c->getRHS();
+            auto x = gaussianElimination(A, b);
+
+            for (int i = 0; i < c->ordernodes.size(); ++i)
+                c->ordernodes[i]->setVoltage(x[i]);
+            for (auto *e: c->getElements())
+                if (c->currentIndexmap.count(e))
+                    e->setCurrent(x[c->currentIndexmap[e]]);
+
+            double y = 0;
+            if (type == "V") {
+                for (auto *n: c->ordernodes)
+                    if (n->getName() == targetName) {
+                        y = n->getVoltage();
+                        break;
+                    }
+            } else {                           // "I"
+                for (auto *e: c->getElements())
+                    if (e->getName() == targetName) {
+                        y = e->getCurrent();
+                        break;
+                    }
+            }
+            data.emplace_back(v, y);
+        }
+        sweepElem->setValue(orig);
+        return data;
+    }
+
+    vector<pair<double, double>>
+    ACSweepData(double omegaStart, double omegaStop, double inc, const string &kind, const string &target,
+                Circuit *c) {
+        vector<pair<double, double>> data;
+        if (!preAnalysisErrs(c)) return data;
+        if (kind == "V" && !c->getNodeAccess().count(target)) return data;
+
+        for (double w = omegaStart; w <= omegaStop + 1e-12; w += inc) {
+            c->BuildACMNA(w);
+            auto A = c->getComplexMatrix();
+            auto b = c->getComplexRHS();
+            auto x = solveComplexSystem(A, b);
+
+            complex<double> ph;
+            if (kind == "V") {
+                int idx = c->nodetoindex.at(target);
+                ph = x[idx];
+            } else {
+                Element *probe = nullptr;
+                for (auto *e: c->getElements())
+                    if (e->getName() == target) {
+                        probe = e;
+                        break;
+                    }
+
+                if (probe && c->currentIndexmap.count(probe)) ph = x[c->currentIndexmap[probe]];
+
+                else {
+                    Node *n1 = probe->getFirstNode();
+                    Node *n2 = probe->getSecondNode();
+                    complex<double> v1 = c->nodetoindex.count(n1->getName()) ? x[c->nodetoindex[n1->getName()]] : 0.0;
+                    complex<double> v2 = c->nodetoindex.count(n2->getName()) ? x[c->nodetoindex[n2->getName()]] : 0.0;
+                    double val = probe->getValue();
+                    if (probe->getType() == "Resistor") ph = (v1 - v2) / val;
+                    else if (probe->getType() == "Capacitor") ph = (v1 - v2) * complex<double>(0, val * w);
+                    else if (probe->getType() == "Inductor") ph = (v1 - v2) / complex<double>(0, w * val);
+                }
+            }
+
+            data.emplace_back(w, abs(ph));
+        }
+        return data;
+    }
+
+    void
+    multipleDCSweep(vector<string> &probes, string sweptSource, double startValue, double endValue, double increment,
+                    Circuit *circuit) {
+        for (auto &p: probes) {
+            if (p[0] == 'V') {
                 string type = "V";
                 p.erase(0, 1);
                 p.erase(remove(p.begin(), p.end(), '('), p.end());
                 p.erase(remove(p.begin(), p.end(), ')'), p.end());
                 DCSweep(sweptSource, startValue, endValue, increment, type, p, circuit);
             }
-            if (p[0] == 'I'){
+            if (p[0] == 'I') {
                 string type = "I";
                 p.erase(0, 1);
                 p.erase(remove(p.begin(), p.end(), '('), p.end());
@@ -2681,7 +2777,7 @@ public:
         double delta_t = 1e-3;
         circuit->setDeltat(delta_t);
 
-        int totalSteps = (int)((endValue - startValue) / delta_t) + 1;
+        int totalSteps = (int) ((endValue - startValue) / delta_t) + 1;
         double nextPrintTime = startValue;
 
         cout << "========== Transient Analysis ==========\n";
@@ -2690,7 +2786,7 @@ public:
         for (int step = 0; step <= totalSteps; ++step) {
             double t = startValue + step * delta_t;
 
-            for (Element* e : circuit->getElements()) {
+            for (Element *e: circuit->getElements()) {
                 e->updateTime(t);
             }
             circuit->BuildMNA();
@@ -2701,23 +2797,22 @@ public:
             for (int i = 0; i < circuit->ordernodes.size(); ++i)
                 circuit->ordernodes[i]->setVoltage(solution[i]);
 
-            for (Element* e : circuit->getElements()) {
+            for (Element *e: circuit->getElements()) {
                 if (circuit->currentIndexmap.count(e)) {
-                    double inew=solution[circuit->currentIndexmap[e]];
+                    double inew = solution[circuit->currentIndexmap[e]];
                     e->setCurrent(inew);
-                    if (auto* ind = dynamic_cast<Inductor*>(e)) {
+                    if (auto *ind = dynamic_cast<Inductor *>(e)) {
                         ind->updateCurrent(inew);
                     }
                 }
             }
 
-            for (Element* e : circuit->getElements()) {
-                if (auto* cap = dynamic_cast<Capacitor*>(e)) {
+            for (Element *e: circuit->getElements()) {
+                if (auto *cap = dynamic_cast<Capacitor *>(e)) {
                     double vcap = cap->getFirstNode()->getVoltage() - cap->getSecondNode()->getVoltage();
                     cap->updateVoltage(vcap);
                 }
             }
-
 
 
             if (abs(t - nextPrintTime) < delta_t / 2 || t >= endValue) {
@@ -2725,14 +2820,14 @@ public:
                 cout << "t = " << t << " s : ";
 
                 if (type == "V") {
-                    for (auto* n : circuit->ordernodes) {
+                    for (auto *n: circuit->ordernodes) {
                         if (n->getName() == target) {
                             cout << "V(" << target << ") = " << clean(n->getVoltage()) << " V";
                             break;
                         }
                     }
                 } else if (type == "I") {
-                    for (auto* e : circuit->getElements()) {
+                    for (auto *e: circuit->getElements()) {
                         if (e->getName() == target) {
                             cout << "I(" << target << ") = " << clean(e->getCurrent()) << " A";
                             break;
@@ -2748,8 +2843,9 @@ public:
         cout << "========================================\n";
     }
 
-    void multipleTransient(vector<string> &probes, double startValue, double endValue, double increment, Circuit* circuit) {
-        for (auto& p : probes) {
+    void
+    multipleTransient(vector<string> &probes, double startValue, double endValue, double increment, Circuit *circuit) {
+        for (auto &p: probes) {
             if (p[0] == 'V') {
                 string type = "V";
                 p.erase(0, 1);
@@ -2773,14 +2869,14 @@ public:
         for (auto element: circuit->getElements()) {
             if (!element)
                 continue;
-            if (element->getName().substr(0,2) == "AC") {
+            if (element->getName().substr(0, 2) == "AC") {
                 return "AC source already exists! you can't add more than one\n";
             }
         }
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
         Element *element = nullptr;
-        element=new ACVoltageSource("AC Voltage", n1, n2, amp);
+        element = new ACVoltageSource("AC Voltage", n1, n2, amp);
         circuit->addElement(element);
         element->getFirstNode()->addConnectedElement(element);
         element->getSecondNode()->addConnectedElement(element);
@@ -2793,14 +2889,14 @@ public:
         for (auto element: circuit->getElements()) {
             if (!element)
                 continue;
-            if (element->getName().substr(0,2) == "AC") {
+            if (element->getName().substr(0, 2) == "AC") {
                 return "AC source already exists! you can't add more than one\n";
             }
         }
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
         Element *element = nullptr;
-        element=new ACCurrentSource("AC Current", amp, n1, n2);
+        element = new ACCurrentSource("AC Current", amp, n1, n2);
         circuit->addElement(element);
         element->getFirstNode()->addConnectedElement(element);
         element->getSecondNode()->addConnectedElement(element);
@@ -2808,7 +2904,7 @@ public:
     }
 
     void ACAnalysis(double omegaStart, double omegaStop, int steps,
-                    string type, string target, Circuit* circuit) {
+                    string type, string target, Circuit *circuit) {
         circuit->setType("AC");
         circuit->clear();
 
@@ -2842,18 +2938,18 @@ public:
                 for (int i = 0; i < circuit->ordernodes.size(); ++i) {
                     if (circuit->ordernodes[i]->getName() == target) {
                         double magnitude = abs(x[i]);
-                        double phase= arg(x[i]) * 180.0 / M_PI;
-                        if(fabs(magnitude) < 1e-3)
-                            magnitude= 0.0;
-                        if(fabs(phase) < 1e-3)
-                            phase=0.0;
+                        double phase = arg(x[i]) * 180.0 / M_PI;
+                        if (fabs(magnitude) < 1e-3)
+                            magnitude = 0.0;
+                        if (fabs(phase) < 1e-3)
+                            phase = 0.0;
                         cout << "|V(" << target << ")| = " << magnitude << " V, "
                              << "phase = " << phase << " degrees";
                         break;
                     }
                 }
             } else if (type == "I") {
-                for (auto* e : circuit->getElements()) {
+                for (auto *e: circuit->getElements()) {
                     if (e->getName() == target) {
                         complex<double> current;
                         if (circuit->currentIndexmap.count(e)) {
@@ -2882,10 +2978,10 @@ public:
 
                         double magnitude = abs(current);
                         double phase = arg(current) * 180.0 / M_PI;
-                        if(phase<0)
-                            phase+=180;
-                        else if(phase>0)
-                            phase-=180;
+                        if (phase < 0)
+                            phase += 180;
+                        else if (phase > 0)
+                            phase -= 180;
                         if (fabs(magnitude) < 1e-3)
                             magnitude = 0.0;
                         if (fabs(phase) < 1e-3)
@@ -2902,6 +2998,141 @@ public:
     }
 
 };
+
+void drawAxisTicks(SDL_Renderer *ren, bool isX, int p0, int p1, int fixed, double minVal, double maxVal,
+                   TTF_Font* font) {
+    SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+    const int tickSize = 5;
+    const int Ndiv = 10;
+    font = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 18);
+
+    for (int i = 0; i <= Ndiv; ++i) {
+        double t = static_cast<double>(i) / Ndiv;
+        int px = p0 + static_cast<int>(t * (p1 - p0));
+
+        if (isX) {
+            SDL_RenderDrawLine(ren, px, fixed, px, fixed + tickSize);
+        } else {
+            SDL_RenderDrawLine(ren, fixed - tickSize, px, fixed, px);
+        }
+
+        if (font) {
+            double val = minVal + t * (maxVal - minVal);
+            string s = to_string(val).substr(0, 6);
+            SDL_Surface *surf = TTF_RenderUTF8_Blended(font, s.c_str(), SDL_Color{0, 255, 0});
+            SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
+            SDL_Rect dst;
+            if (isX) {
+                dst = {px - surf->w / 2, fixed + tickSize + 3, surf->w, surf->h};
+            } else {
+                dst = {fixed - tickSize - surf->w - 3, px - surf->h / 2, surf->w, surf->h};
+            }
+            SDL_RenderCopy(ren, tex, nullptr, &dst);
+            SDL_FreeSurface(surf);
+            SDL_DestroyTexture(tex);
+        }
+    }
+}
+
+
+void plotDC(const vector<pair<double, double>> &pts, string caption) {
+    if (pts.empty()) return;
+    TTF_Font* font = globalFont;
+
+    constexpr int W = 800, H = 600, M = 60;
+    SDL_Window *w = SDL_CreateWindow(caption.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, W, H,
+                                     SDL_WINDOW_SHOWN);
+    SDL_Renderer *r = SDL_CreateRenderer(w, -1, SDL_RENDERER_ACCELERATED);
+
+    double xmin = pts.front().first, xmax = xmin;
+    double ymin = pts.front().second, ymax = ymin;
+    for (auto &p: pts) {
+        xmin = min(xmin, p.first);
+        xmax = max(xmax, p.first);
+        ymin = min(ymin, p.second);
+        ymax = std::max(ymax, p.second);
+    }
+    if (fabs(ymax - ymin) < 1e-9) {
+        ymax += 1;
+        ymin -= 1;
+    }
+
+    auto X = [&](double v) { return M + (v - xmin) / (xmax - xmin) * (W - 2 * M); };
+    auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
+
+    bool quit = false;
+    SDL_Event ev;
+    while (!quit) {
+        while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
+
+        SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
+        SDL_RenderClear(r);
+        SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+        SDL_RenderDrawLine(r, M, H - M, W - M, H - M);
+        SDL_RenderDrawLine(r, M, H - M, M, M);
+
+
+        SDL_SetRenderDrawColor(r, 30, 144, 255, 255);
+        drawAxisTicks(r, true, M, W - M, H - M, xmin, xmax, font);
+        drawAxisTicks(r, false, H - M, M, M, ymin, ymax, font);
+        for (size_t i = 1; i < pts.size(); ++i)
+            SDL_RenderDrawLine(r, (int) X(pts[i - 1].first), (int) Y(pts[i - 1].second),
+                               (int) X(pts[i].first), (int) Y(pts[i].second));
+        SDL_RenderPresent(r);
+        SDL_Delay(16);
+    }
+    SDL_DestroyRenderer(r);
+    SDL_DestroyWindow(w);
+}
+
+void plotAC(const vector<pair<double, double>> &pts, const string &caption) {
+    if (pts.empty()) return;
+    TTF_Font* font = globalFont;
+    constexpr int W = 800, H = 600, M = 60;
+    SDL_Window *win = SDL_CreateWindow(caption.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, W, H,
+                                       SDL_WINDOW_SHOWN);
+    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+
+    double xmin = pts.front().first, xmax = xmin, ymin = pts.front().second, ymax = ymin;
+    for (auto &p: pts) {
+        xmin = std::min(xmin, p.first);
+        xmax = std::max(xmax, p.first);
+        ymin = std::min(ymin, p.second);
+        ymax = std::max(ymax, p.second);
+    }
+    if (fabs(ymax - ymin) < 1e-12) {
+        ymax += 1;
+        ymin -= 1;
+    }
+
+    auto X = [&](double v) { return M + (v - xmin) / (xmax - xmin) * (W - 2 * M); };
+    auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
+
+    bool quit = false;
+    SDL_Event ev;
+    while (!quit) {
+        while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
+
+        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+        SDL_RenderClear(ren);
+        SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+        SDL_RenderDrawLine(ren, M, H - M, W - M, H - M);
+        SDL_RenderDrawLine(ren, M, H - M, M, M);
+
+        drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
+        drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
+
+        SDL_SetRenderDrawColor(ren, 220, 20, 60, 255);
+        for (size_t i = 1; i < pts.size(); ++i) {
+            SDL_RenderDrawLine(ren, (int) X(pts[i - 1].first), (int) Y(pts[i - 1].second), (int) X(pts[i].first),
+                               (int) Y(pts[i].second));
+        }
+        SDL_RenderPresent(ren);
+        SDL_Delay(16);
+    }
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+}
 
 
 class View {
@@ -2951,10 +3182,12 @@ public:
         regex VAC(R"(^\s*add\s+AC\s+Voltage\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
         regex CAC(R"(^\s*add\s+AC\s+Current\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
         regex ACsweep(R"(^\s*\.AC\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
+        regex DCSweepPlot(R"(^\s*plot\s+\.DC\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
+        regex ACsweepPlot(R"(^\s*plot\s+\.AC\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
         regex exit(R"(^exit$)");
         while (true) {
             getline(cin, input);
-            if(regex_match(input, match, VAC)){
+            if (regex_match(input, match, VAC)) {
                 string node1 = match[1].str();
                 string node2 = match[2].str();
                 string number = match[3].str();
@@ -2994,11 +3227,11 @@ public:
                             break;
                     }
                 }
-                cout<<controller.addACVoltageSource(node1, node2, value, circuit);
+                cout << controller.addACVoltageSource(node1, node2, value, circuit);
                 if (!loadedFilename.empty()) {
                     controller.saveCircuitToFile(circuit, loadedFilename);
                 }
-            } else if(regex_match(input, match, CAC)){
+            } else if (regex_match(input, match, CAC)) {
                 string node1 = match[1].str();
                 string node2 = match[2].str();
                 string number = match[3].str();
@@ -3038,7 +3271,7 @@ public:
                             break;
                     }
                 }
-                cout<<controller.addACCurrentSource(node1, node2, value, circuit);
+                cout << controller.addACCurrentSource(node1, node2, value, circuit);
                 if (!loadedFilename.empty()) {
                     controller.saveCircuitToFile(circuit, loadedFilename);
                 }
@@ -3304,7 +3537,8 @@ public:
                     controller.saveCircuitToFile(circuit, loadedFilename);
                 }
             } else if (regex_match(input, match, remove_element)) {
-                if (match[1] != "R" && match[1] != "L" && match[1] != "C" && match[1] != "D" && match[1] != "V" && match[1] != "I" ) {
+                if (match[1] != "R" && match[1] != "L" && match[1] != "C" && match[1] != "D" && match[1] != "V" &&
+                    match[1] != "I") {
                     cout << "Element " << match[1] << " not found in library\n";
                     continue;
                 }
@@ -4069,9 +4303,7 @@ public:
                 if (!controller.preAnalysisErrs(circuit))
                     continue;
                 controller.DCSweep(source, start, stop, increament, type, nolement, circuit);
-            }
-
-            else if (regex_match(input, match, multipleDCSweep)){
+            } else if (regex_match(input, match, multipleDCSweep)) {
                 regex probePattern(R"([IV]\(\S+\))", regex::icase);
                 sregex_iterator it(input.begin(), input.end(), probePattern);
                 sregex_iterator end;
@@ -4081,9 +4313,7 @@ public:
                     ++it;
                 }
                 controller.multipleDCSweep(probes, match[1], stod(match[2]), stod(match[3]), stod(match[4]), circuit);
-            }
-
-            else if (regex_match(input, match, multipleTRAN)){
+            } else if (regex_match(input, match, multipleTRAN)) {
                 regex probePattern(R"([IV]\(\S+\))", regex::icase);
                 sregex_iterator it(input.begin(), input.end(), probePattern);
                 sregex_iterator end;
@@ -4093,9 +4323,7 @@ public:
                     ++it;
                 }
                 controller.multipleTransient(probes, stod(match[1]), stod(match[2]), stod(match[3]), circuit);
-            }
-
-            else if (regex_match(input, match, transient)) {
+            } else if (regex_match(input, match, transient)) {
                 double start;
                 double stop;
                 double increament;
@@ -4130,6 +4358,27 @@ public:
                 if (!controller.preAnalysisErrs(circuit))
                     continue;
                 controller.ACAnalysis(w_start, w_stop, N, type, nolement, circuit);
+            } else if (regex_match(input, match, DCSweepPlot)) {
+                string src = match[1];
+                double start = stod(match[2]);
+                double stop = stod(match[3]);
+                double step = stod(match[4]);
+                string type = match[5];
+                string probe = match[6];
+
+                auto pts = controller.DCSweepData(src, start, stop, step, type, probe, circuit);
+                plotDC(pts, "DC sweep");
+            } else if (regex_match(input, match, ACsweepPlot)) {
+                double wStart = stod(match[1]);
+                double wStop = stod(match[2]);
+
+                double nPts = stod(match[3]);
+                double wStep = (wStop - wStart) / (nPts - 1);
+                string kind = match[4];
+                string probe = match[5];
+
+                auto pts = controller.ACSweepData(wStart, wStop, wStep, kind, probe, circuit);
+                plotAC(pts, "AC sweep");
             } else if (regex_match(input, match, reset)) {
                 circuit->reset();
                 cout << "A new schematic is created!\nStart again!\n";
@@ -4142,9 +4391,125 @@ public:
     }
 };
 
-int main() {
+class Button {
+private:
+    SDL_Rect rect_;
+    string txt_;
+    SDL_Color normal_, hover_;
+    function<void()> onClick_;
+    TTF_Font *font_;
+    mutable bool hovering_{false};
+
+public:
+    Button(SDL_Rect zone, string caption, SDL_Color normal, SDL_Color hover, function<void()> onClick,
+           TTF_Font *font)
+            : rect_(zone), txt_(std::move(caption)), normal_(normal), hover_(hover), onClick_(std::move(onClick)),
+              font_(font) {}
+
+    void handleEvent(const SDL_Event &e) {
+        int mx, my;
+        SDL_GetMouseState(&mx, &my);
+
+        SDL_Point mouse{mx, my};
+        hovering_ = SDL_PointInRect(&mouse, &rect_);
+
+        if (hovering_ &&
+            e.type == SDL_MOUSEBUTTONDOWN &&
+            e.button.button == SDL_BUTTON_LEFT) {
+            onClick_();
+        }
+    }
+
+    void render(SDL_Renderer *r) const {
+        SDL_Color c = hovering_ ? hover_ : normal_;
+        SDL_SetRenderDrawColor(r, c.r, c.g, c.b, 255);
+        SDL_RenderFillRect(r, &rect_);
+
+        SDL_Surface *surf = TTF_RenderUTF8_Blended(font_, txt_.c_str(), SDL_Color{0, 255, 255});
+        SDL_Texture *tex = SDL_CreateTextureFromSurface(r, surf);
+        SDL_Rect dst{rect_.x + (rect_.w - surf->w) / 2, rect_.y + (rect_.h - surf->h) / 2, surf->w, surf->h};
+        SDL_RenderCopy(r, tex, nullptr, &dst);
+        SDL_FreeSurface(surf);
+        SDL_DestroyTexture(tex);
+    }
+
+};
+
+class MainMenu {
+private:
+    vector<Button> buttons_;
+public:
+    MainMenu(SDL_Window *w, SDL_Renderer *r, TTF_Font *f) {
+        int ww, wh;
+        SDL_GetWindowSize(w, &ww, &wh);
+
+        SDL_Rect left{ww / 2 - 220, wh / 2 - 50, 200, 80};
+        SDL_Rect right{ww / 2 + 20, wh / 2 - 50, 200, 80};
+
+        buttons_.emplace_back(left, "New Circuit",
+                              SDL_Color{0, 120, 215, 255},
+                              SDL_Color{30, 150, 245, 255},
+                              []() { cout << "New Circuit chosen\n"; },
+                              f);
+
+        buttons_.emplace_back(right, "Load Circuit",
+                              SDL_Color{120, 0, 90, 255},
+                              SDL_Color{150, 30, 120, 255},
+                              []() { cout << "Load Circuit chosen\n"; },
+                              f);
+    }
+
+    void handle(const SDL_Event &e) { for (auto &b: buttons_) b.handleEvent(e); }
+
+    void draw(SDL_Renderer *r) { for (auto &b: buttons_) b.render(r); }
+
+};
+
+
+int main(int argc, char *argv[]) {
     View view;
     view.run();
+
+    if (SDL_Init(SDL_INIT_VIDEO) != 0 || TTF_Init() != 0) {
+        std::cerr << "SDL/TTF init failed\n";
+        return 1;
+    }
+
+    SDL_Window *win = SDL_CreateWindow(
+            "CSPICE",
+            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+            1024, 640,
+            SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+    );
+    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+
+    TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 18);
+    if (!font) {
+        std::cerr << "Font load error\n";
+        return 1;
+    }
+
+    MainMenu menu(win, ren, font);
+
+    bool quit = false;
+    SDL_Event ev;
+    while (!quit) {
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_QUIT) quit = true;
+            menu.handle(ev);
+        }
+
+        SDL_SetRenderDrawColor(ren, 25, 25, 25, 255);
+        SDL_RenderClear(ren);
+        menu.draw(ren);
+        SDL_RenderPresent(ren);
+    }
+
+    TTF_CloseFont(font);
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+    TTF_Quit();
+    SDL_Quit();
 
     return 0;
 }

@@ -12,14 +12,14 @@
 #include <SDL2/SDL_timer.h>
 
 
-bool quitter=false;
+bool quitter = false;
 
 using namespace std;
 
 vector<complex<double>> solveComplexSystem(vector<vector<complex<double>>> A, vector<complex<double>> b) {
     int n = b.size();
     vector<complex<double>> x(n, 0.0);
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < n; i++) {
         int pivot = i;
         for (int row = i + 1; row < n; ++row) {
             if (abs(A[row][i]) > abs(A[pivot][i])) {
@@ -55,7 +55,7 @@ vector<double> gaussianElimination(const vector<vector<double>> &A_in, const vec
     vector<double> b = b_in;
     vector<double> x(n, 0.0);
 
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < n; i++) {
         int pivot = i;
         for (int row = i + 1; row < n; ++row) {
             if (abs(A[row][i]) > abs(A[pivot][i])) {
@@ -1273,7 +1273,7 @@ public:
     }
 };
 
-TTF_Font* globalFont = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 18);
+TTF_Font *globalFont = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 18);
 
 class Controller {
 public:
@@ -2443,7 +2443,7 @@ public:
             } else {
                 while (true) {
                     cout << "-choose existing schematic:\n";
-                    for (int i = 0; i < files.size(); ++i) {
+                    for (int i = 0; i < files.size(); i++) {
                         cout << "  " << (i + 1) << "-" << files[i] << "\n";
                     }
 
@@ -2490,15 +2490,15 @@ public:
         }
 
         cout << "MNA Matrix A:\n";
-        for (int i = 0; i < n; ++i) {
-            for (int j = 0; j < A[i].size(); ++j) {
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < A[i].size(); j++) {
                 cout << setw(10) << fixed << setprecision(3) << A[i][j] << " ";
             }
             cout << "\n";
         }
 
         cout << "\nVector b:\n";
-        for (int i = 0; i < b.size(); ++i) {
+        for (int i = 0; i < b.size(); i++) {
             cout << "b[" << i << "] = " << fixed << setprecision(3) << b[i] << "\n";
         }
         cout << "\n";
@@ -2511,7 +2511,7 @@ public:
         vector<vector<double>> A = circuit->getMatrix();
         vector<double> b = circuit->getRHS();
         vector<double> solution = gaussianElimination(A, b);
-        for (int i = 0; i < circuit->ordernodes.size(); ++i) {
+        for (int i = 0; i < circuit->ordernodes.size(); i++) {
             circuit->ordernodes[i]->setVoltage(solution[i]);
         }
         for (Element *e: circuit->getElements()) {
@@ -2577,7 +2577,7 @@ public:
             vector<double> b = circuit->getRHS();
             vector<double> solution = gaussianElimination(A, b);
 
-            for (int i = 0; i < circuit->ordernodes.size(); ++i)
+            for (int i = 0; i < circuit->ordernodes.size(); i++)
                 circuit->ordernodes[i]->setVoltage(solution[i]);
 
             int N = circuit->ordernodes.size();
@@ -2638,7 +2638,7 @@ public:
     }
 
     vector<pair<double, double>>
-    DCSweepData(const std::string &sweptSource, double startValue, double endValue, double inc,
+    DCSweepData(const string &sweptSource, double startValue, double endValue, double inc,
                 string type, string targetName, Circuit *c) {
         vector<pair<double, double>> data;
         if (!preAnalysisErrs(c)) return data;
@@ -2663,7 +2663,7 @@ public:
             auto b = c->getRHS();
             auto x = gaussianElimination(A, b);
 
-            for (int i = 0; i < c->ordernodes.size(); ++i)
+            for (int i = 0; i < c->ordernodes.size(); i++)
                 c->ordernodes[i]->setVoltage(x[i]);
             for (auto *e: c->getElements())
                 if (c->currentIndexmap.count(e))
@@ -2697,7 +2697,7 @@ public:
         if (kind == "V" && !c->getNodeAccess().count(target)) return data;
 
         double omegaStart = fstart * 2 * M_PI;
-        double omegaStop= fstop * 2 * M_PI;
+        double omegaStop = fstop * 2 * M_PI;
 
         for (double w = omegaStart; w <= omegaStop + 1e-12; w += inc) {
             c->BuildACMNA(w);
@@ -2731,7 +2731,7 @@ public:
                 }
             }
 
-            data.emplace_back(w/(2*M_PI), abs(ph));
+            data.emplace_back(w / (2 * M_PI), abs(ph));
         }
         return data;
     }
@@ -2799,7 +2799,7 @@ public:
             auto b = circuit->getRHS();
             auto solution = gaussianElimination(A, b);
 
-            for (int i = 0; i < circuit->ordernodes.size(); ++i)
+            for (int i = 0; i < circuit->ordernodes.size(); i++)
                 circuit->ordernodes[i]->setVoltage(solution[i]);
 
             for (Element *e: circuit->getElements()) {
@@ -2847,6 +2847,72 @@ public:
 
         cout << "========================================\n";
     }
+
+
+    vector<pair<double, double>>
+    TransientData(double tStart, double tStop, int nPts, const string &kind, const string &target,
+                  Circuit *c) {
+        vector<pair<double, double>> out;
+        if (!preAnalysisErrs(c) || nPts < 2) return out;
+
+        double dt = (tStop - tStart) / (nPts - 1);
+        c->setDeltat(dt);
+        c->setType("Transient");
+        c->clear();
+
+        if (kind == "V" && !c->getNodeAccess().count(target)) return out;
+        if (kind == "I") {
+            bool ok = false;
+            for (auto *e: c->getElements())
+                if (e->getName() == target) {
+                    ok = true;
+                    break;
+                }
+            if (!ok) return out;
+        }
+
+        double t = tStart;
+        for (int step = 0; step < nPts; ++step, t += dt) {
+            for (Element *e: c->getElements()) e->updateTime(t);
+
+            c->BuildMNA();
+            auto sol = gaussianElimination(c->getMatrix(), c->getRHS());
+
+            for (size_t i = 0; i < c->ordernodes.size(); i++)
+                c->ordernodes[i]->setVoltage(sol[i]);
+
+            for (Element *e: c->getElements())
+                if (c->currentIndexmap.count(e))
+                    e->setCurrent(sol[c->currentIndexmap[e]]);
+
+            for (Element *e: c->getElements()) {
+                if (auto *ind = dynamic_cast<Inductor *>(e))
+                    ind->updateCurrent(e->getCurrent());
+                if (auto *cap = dynamic_cast<Capacitor *>(e)) {
+                    double vcap = cap->getFirstNode()->getVoltage()
+                                  - cap->getSecondNode()->getVoltage();
+                    cap->updateVoltage(vcap);
+                }
+            }
+            double y = 0;
+            if (kind == "V") {
+                for (auto *n: c->ordernodes)
+                    if (n->getName() == target) {
+                        y = n->getVoltage();
+                        break;
+                    }
+            } else {
+                for (auto *e: c->getElements())
+                    if (e->getName() == target) {
+                        y = e->getCurrent();
+                        break;
+                    }
+            }
+            out.emplace_back(t, y);
+        }
+        return out;
+    }
+
 
     void
     multipleTransient(vector<string> &probes, double startValue, double endValue, double increment, Circuit *circuit) {
@@ -2912,8 +2978,8 @@ public:
                     string type, string target, Circuit *circuit) {
         circuit->setType("AC");
         circuit->clear();
-        double omegaStart=2*M_PI*fstart;
-        double omegaStop=2*M_PI*fstop;
+        double omegaStart = 2 * M_PI * fstart;
+        double omegaStop = 2 * M_PI * fstop;
         if (type == "V" && !circuit->getNodeAccess().count(target)) {
             cout << "Error: Node " << target << " not found in the circuit\n";
             return;
@@ -2932,16 +2998,16 @@ public:
         }
         cout << "========== AC Analysis ==========\n";
         cout << "Analyzing: " << (type == "V" ? "V(" + target + ")" : "I(" + target + ")") << endl;
-        for (int i = 0; i <= steps; ++i) {
+        for (int i = 0; i <= steps; i++) {
             double freq = fstart + i * (fstop - fstart) / steps;
-            circuit->BuildACMNA(freq*2*M_PI);
+            circuit->BuildACMNA(freq * 2 * M_PI);
             auto A = circuit->getComplexMatrix();
             auto b = circuit->getComplexRHS();
             auto x = solveComplexSystem(A, b);
             cout << fixed << setprecision(3);
             cout << "f = " << freq << " Hz : ";
             if (type == "V") {
-                for (int i = 0; i < circuit->ordernodes.size(); ++i) {
+                for (int i = 0; i < circuit->ordernodes.size(); i++) {
                     if (circuit->ordernodes[i]->getName() == target) {
                         double magnitude = abs(x[i]);
                         double phase = arg(x[i]) * 180.0 / M_PI;
@@ -3006,13 +3072,13 @@ public:
 };
 
 void drawAxisTicks(SDL_Renderer *ren, bool isX, int p0, int p1, int fixed, double minVal, double maxVal,
-                   TTF_Font* font) {
+                   TTF_Font *font) {
     SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
     const int tickSize = 5;
     const int Ndiv = 10;
     font = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 12);
 
-    for (int i = 0; i <= Ndiv; ++i) {
+    for (int i = 0; i <= Ndiv; i++) {
         double t = static_cast<double>(i) / Ndiv;
         int px = p0 + static_cast<int>(t * (p1 - p0));
 
@@ -3052,12 +3118,12 @@ void plotDC(const vector<pair<double, double>> &pts, string caption, string outp
     //TTF_Font* font = globalFont;
     TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
 
-    atomic <bool> quit(false);
+    atomic<bool> quit_(false);
 
-    thread inputThread([&quit](){
+    thread inputThread([&quit_]() {
         string cmd;
-        cin>>cmd;
-        quit=true;
+        cin >> cmd;
+        quit_ = true;
     });
 
     constexpr int W = 800, H = 600, M = 60;
@@ -3071,7 +3137,7 @@ void plotDC(const vector<pair<double, double>> &pts, string caption, string outp
         xmin = min(xmin, p.first);
         xmax = max(xmax, p.first);
         ymin = min(ymin, p.second);
-        ymax = std::max(ymax, p.second);
+        ymax = max(ymax, p.second);
     }
     if (fabs(ymax - ymin) < 1e-9) {
         ymax += 1;
@@ -3093,8 +3159,8 @@ void plotDC(const vector<pair<double, double>> &pts, string caption, string outp
         SDL_RenderDrawLine(r, M, H - M, M, M);
 
         SDL_Color color = {0, 0, 0, 255};
-        SDL_Surface* surface = TTF_RenderText_Solid(font, input.c_str(), color);
-        SDL_Texture* texture = SDL_CreateTextureFromSurface(r, surface);
+        SDL_Surface *surface = TTF_RenderText_Solid(font, input.c_str(), color);
+        SDL_Texture *texture = SDL_CreateTextureFromSurface(r, surface);
 
         SDL_Rect dst = {W - M - surface->w, H - M + 15, surface->w, surface->h};
         SDL_RenderCopy(r, texture, nullptr, &dst);
@@ -3104,12 +3170,12 @@ void plotDC(const vector<pair<double, double>> &pts, string caption, string outp
         SDL_SetRenderDrawColor(r, 30, 144, 255, 255);
         drawAxisTicks(r, true, M, W - M, H - M, xmin, xmax, font);
         drawAxisTicks(r, false, H - M, M, M, ymin, ymax, font);
-        for (size_t i = 1; i < pts.size(); ++i)
+        for (size_t i = 1; i < pts.size(); i++)
             SDL_RenderDrawLine(r, (int) X(pts[i - 1].first), (int) Y(pts[i - 1].second),
                                (int) X(pts[i].first), (int) Y(pts[i].second));
-        SDL_Surface* surfaceY = TTF_RenderText_Solid(font, output.c_str(), color);
-        SDL_Texture* textureY = SDL_CreateTextureFromSurface(r, surfaceY);
-        SDL_Rect dstY = {M - surfaceY->w - 5, M - surfaceY->h - 10 , surfaceY->w, surfaceY->h};
+        SDL_Surface *surfaceY = TTF_RenderText_Solid(font, output.c_str(), color);
+        SDL_Texture *textureY = SDL_CreateTextureFromSurface(r, surfaceY);
+        SDL_Rect dstY = {M - surfaceY->w - 5, M - surfaceY->h - 10, surfaceY->w, surfaceY->h};
         SDL_RenderCopy(r, textureY, nullptr, &dstY);
 
         SDL_FreeSurface(surfaceY);
@@ -3117,7 +3183,7 @@ void plotDC(const vector<pair<double, double>> &pts, string caption, string outp
         SDL_RenderPresent(r);
         SDL_Delay(16);
     }
-    if(inputThread.joinable())
+    if (inputThread.joinable())
         inputThread.detach();
     SDL_DestroyRenderer(r);
     SDL_DestroyWindow(w);
@@ -3130,14 +3196,13 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
         return;
     }
 
-    atomic <bool> quit(false);
+    atomic<bool> quit(false);
 
-    thread inputThread([&quit](){
+    thread inputThread([&quit]() {
         string cmd;
-        cin>>cmd;
-        quit=true;
+        cin >> cmd;
+        quit = true;
     });
-    //TTF_Font* font = globalFont;
     TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
     constexpr int W = 800, H = 600, M = 60;
     SDL_Window *win = SDL_CreateWindow(caption.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, W, H,
@@ -3146,10 +3211,10 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
 
     double xmin = pts.front().first, xmax = xmin, ymin = pts.front().second, ymax = ymin;
     for (auto &p: pts) {
-        xmin = std::min(xmin, p.first);
-        xmax = std::max(xmax, p.first);
-        ymin = std::min(ymin, p.second);
-        ymax = std::max(ymax, p.second);
+        xmin = min(xmin, p.first);
+        xmax = max(xmax, p.first);
+        ymin = min(ymin, p.second);
+        ymax = max(ymax, p.second);
     }
     if (fabs(ymax - ymin) < 1e-12) {
         ymax += 1;
@@ -3159,9 +3224,8 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
     auto X = [&](double v) { return M + (v - xmin) / (xmax - xmin) * (W - 2 * M); };
     auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
 
-    //bool quit = false;
     SDL_Event ev;
-    cout<<"type any command to quit plot!\n";
+    cout << "type any command to quit plot!\n";
     while (!quit) {
         while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
 
@@ -3172,8 +3236,8 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
         SDL_RenderDrawLine(ren, M, H - M, M, M);
 
         SDL_Color color = {0, 0, 0, 255};
-        SDL_Surface* surface = TTF_RenderText_Solid(font, "Frequency(Hz)", color);
-        SDL_Texture* texture = SDL_CreateTextureFromSurface(ren, surface);
+        SDL_Surface *surface = TTF_RenderText_Solid(font, "Frequency(Hz)", color);
+        SDL_Texture *texture = SDL_CreateTextureFromSurface(ren, surface);
 
         SDL_Rect dst = {W - M - surface->w, H - M + 15, surface->w, surface->h};
         SDL_RenderCopy(ren, texture, nullptr, &dst);
@@ -3185,12 +3249,12 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
         drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
 
         SDL_SetRenderDrawColor(ren, 220, 20, 60, 255);
-        for (size_t i = 1; i < pts.size(); ++i) {
+        for (size_t i = 1; i < pts.size(); i++) {
             SDL_RenderDrawLine(ren, (int) X(pts[i - 1].first), (int) Y(pts[i - 1].second), (int) X(pts[i].first),
                                (int) Y(pts[i].second));
         }
-        SDL_Surface* surfaceY = TTF_RenderText_Solid(font, output.c_str(), color);
-        SDL_Texture* textureY = SDL_CreateTextureFromSurface(ren, surfaceY);
+        SDL_Surface *surfaceY = TTF_RenderText_Solid(font, output.c_str(), color);
+        SDL_Texture *textureY = SDL_CreateTextureFromSurface(ren, surfaceY);
         SDL_Rect dstY = {M - surfaceY->w - 5, M - surfaceY->h - 10, surfaceY->w, surfaceY->h};
         SDL_RenderCopy(ren, textureY, nullptr, &dstY);
 
@@ -3199,10 +3263,302 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
         SDL_RenderPresent(ren);
         SDL_Delay(16);
     }
-    if(inputThread.joinable())
+    if (inputThread.joinable())
         inputThread.detach();
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
+}
+
+void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, const string &output) {
+    if (pts.empty()) return;
+
+    if (TTF_Init() == -1) {
+        cerr << "TTF_Init Error: " << TTF_GetError() << endl;
+        return;
+    }
+
+    atomic<bool> quit(false);
+    thread inputThread([&quit]() {
+        string cmd;
+        cin >> cmd;
+        quit = true;
+    });
+
+    TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
+    if (!font) {
+        cerr << "TTF_OpenFont error: " << TTF_GetError() << endl;
+        return;
+    }
+
+    constexpr int W = 800, H = 600, M = 60;
+    SDL_Window *win = SDL_CreateWindow(caption.c_str(),
+                                       SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                       W, H, SDL_WINDOW_SHOWN);
+    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+
+    double xmin = pts.front().first, xmax = xmin,
+            ymin = pts.front().second, ymax = ymin;
+    for (auto &p: pts) {
+        xmin = min(xmin, p.first);
+        xmax = max(xmax, p.first);
+        ymin = min(ymin, p.second);
+        ymax = max(ymax, p.second);
+    }
+    if (fabs(xmax - xmin) < 1e-12) {
+        xmax += 1;
+        xmin -= 1;
+    }
+    if (fabs(ymax - ymin) < 1e-12) {
+        ymax += 1;
+        ymin -= 1;
+    }
+
+    auto X = [&](double t) { return M + (t - xmin) / (xmax - xmin) * (W - 2 * M); };
+    auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
+
+    SDL_Event ev;
+    cout << "type any command to quit plot!\n";
+
+    while (!quit) {
+        while (SDL_PollEvent(&ev))
+            if (ev.type == SDL_QUIT) quit = true;
+
+        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+        SDL_RenderClear(ren);
+
+        SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+        SDL_RenderDrawLine(ren, M, H - M, W - M, H - M);    // X
+        SDL_RenderDrawLine(ren, M, H - M, M, M);        // Y
+
+        SDL_Color color = {0, 0, 0, 255};
+        SDL_Surface *surfX = TTF_RenderText_Solid(font, "Time (s)", color);
+        SDL_Texture *texX = SDL_CreateTextureFromSurface(ren, surfX);
+        SDL_Rect dstX = {W - M - surfX->w, H - M + 15, surfX->w, surfX->h};
+        SDL_RenderCopy(ren, texX, nullptr, &dstX);
+        SDL_FreeSurface(surfX);
+        SDL_DestroyTexture(texX);
+
+        SDL_Surface *surfY = TTF_RenderText_Solid(font, output.c_str(), color);
+        SDL_Texture *texY = SDL_CreateTextureFromSurface(ren, surfY);
+        SDL_Rect dstY = {M - surfY->w - 5, M - surfY->h - 10, surfY->w, surfY->h};
+        SDL_RenderCopy(ren, texY, nullptr, &dstY);
+        SDL_FreeSurface(surfY);
+        SDL_DestroyTexture(texY);
+
+        drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
+        drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
+
+        SDL_SetRenderDrawColor(ren, 34, 139, 34, 255);      // green
+        for (size_t i = 1; i < pts.size(); i++)
+            SDL_RenderDrawLine(ren,
+                               static_cast<int>(X(pts[i - 1].first)), static_cast<int>(Y(pts[i - 1].second)),
+                               static_cast<int>(X(pts[i].first)), static_cast<int>(Y(pts[i].second)));
+
+        SDL_RenderPresent(ren);
+        SDL_Delay(16);
+    }
+
+    if (inputThread.joinable()) inputThread.detach();
+    TTF_CloseFont(font);
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+}
+
+void
+plotMultiDC(const vector<vector<pair<double, double>>> &traces, const vector<string> &labels, const string &sweepSrc) {
+    if (traces.empty()) return;
+
+    if (TTF_Init() == -1) {
+        std::cerr << "TTF init error\n";
+        return;
+    }
+    TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
+    constexpr int W = 800, H = 600, M = 60;
+
+    SDL_Window *win = SDL_CreateWindow("DC Sweep – Multiple plots", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                       W, H, SDL_WINDOW_SHOWN);
+    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+
+    double xmin = traces[0][0].first, xmax = xmin;
+    double ymin = traces[0][0].second, ymax = ymin;
+    for (const auto &t: traces)
+        for (auto p: t) {
+            xmin = min(xmin, p.first);
+            xmax = max(xmax, p.first);
+            ymin = min(ymin, p.second);
+            ymax = max(ymax, p.second);
+        }
+    if (fabs(ymax - ymin) < 1e-12) {
+        ymax += 1;
+        ymin -= 1;
+    }
+
+    auto X = [&](double v) { return M + (v - xmin) / (xmax - xmin) * (W - 2 * M); };
+    auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
+
+    const SDL_Color palette[] = {
+            {220, 20,  60,  255},
+            {34,  139, 34,  255},
+            {30,  144, 255, 255},
+            {255, 140, 0,   255},
+            {128, 0,   128, 255},
+            {0,   206, 209, 255},
+            {255, 105, 180, 255}
+    };
+    const size_t NCOL = sizeof(palette) / sizeof(palette[0]);
+
+    bool quit = false;
+    SDL_Event ev;
+    while (!quit) {
+        while (SDL_PollEvent(&ev))
+            if (ev.type == SDL_QUIT) quit = true;
+
+        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+        SDL_RenderClear(ren);
+
+        SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+        SDL_RenderDrawLine(ren, M, H - M, W - M, H - M);
+        SDL_RenderDrawLine(ren, M, H - M, M, M);
+
+        drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
+        drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
+
+        SDL_Color cBlack{0, 0, 0};
+        SDL_Surface *sx = TTF_RenderText_Solid(font, sweepSrc.c_str(), cBlack);
+        SDL_Texture *tx = SDL_CreateTextureFromSurface(ren, sx);
+        SDL_Rect dstx{W - M - sx->w, H - M + 15, sx->w, sx->h};
+        SDL_RenderCopy(ren, tx, nullptr, &dstx);
+        SDL_FreeSurface(sx);
+        SDL_DestroyTexture(tx);
+
+        int lx = W - M - 110, ly = M + 5;
+        SDL_Rect legendBG{lx - 10, ly - 5, 120, 20 * static_cast<int>(labels.size()) + 5};
+        SDL_SetRenderDrawColor(ren, 240, 240, 240, 230);
+        SDL_RenderFillRect(ren, &legendBG);
+
+        for (size_t k = 0; k < traces.size(); k++) {
+            const auto &t = traces[k];
+            SDL_Color col = palette[k % NCOL];
+            SDL_SetRenderDrawColor(ren, col.r, col.g, col.b, 255);
+            for (size_t i = 1; i < t.size(); i++)
+                SDL_RenderDrawLine(ren, int(X(t[i - 1].first)), int(Y(t[i - 1].second)),
+                                   int(X(t[i].first)), int(Y(t[i].second)));
+
+            SDL_Surface *s = TTF_RenderText_Solid(font, labels[k].c_str(), cBlack);
+            SDL_Texture *ts = SDL_CreateTextureFromSurface(ren, s);
+            SDL_Rect bar{lx, ly + 20 * int(k) + 4, 15, 6};
+            SDL_RenderFillRect(ren, &bar);
+            SDL_Rect lbl{lx + 20, ly + 20 * int(k), s->w, s->h};
+            SDL_RenderCopy(ren, ts, nullptr, &lbl);
+            SDL_FreeSurface(s);
+            SDL_DestroyTexture(ts);
+        }
+        SDL_RenderPresent(ren);
+        SDL_Delay(16);
+    }
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+    TTF_Quit();
+}
+
+void plotMultiAC(const vector<vector<pair<double, double>>> &curves, const vector<string> &labels,
+                 const string &caption) {
+    if (curves.empty()) return;
+
+    if (TTF_Init() == -1) {
+        std::cerr << "TTF init error\n";
+        return;
+    }
+    TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
+
+    constexpr int W = 800, H = 600, M = 60;
+
+    SDL_Window *win = SDL_CreateWindow(caption.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                       W, H, SDL_WINDOW_SHOWN);
+    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+
+    double xmin = curves[0][0].first, xmax = xmin;
+    double ymin = curves[0][0].second, ymax = ymin;
+    for (const auto &c: curves)
+        for (auto p: c) {
+            xmin = min(xmin, p.first);
+            xmax = max(xmax, p.first);
+            ymin = min(ymin, p.second);
+            ymax = max(ymax, p.second);
+        }
+    if (fabs(ymax - ymin) < 1e-12) {
+        ymax += 1;
+        ymin -= 1;
+    }
+
+    auto X = [&](double f) { return M + (f - xmin) / (xmax - xmin) * (W - 2 * M); };
+    auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
+
+    const SDL_Color palette[] = {
+            {30,  144, 255, 255},
+            {220, 20,  60,  255},
+            {34,  139, 34,  255},
+            {255, 140, 0,   255},
+            {128, 0,   128, 255},
+            {0,   206, 209, 255},
+            {255, 105, 180, 255}
+    };
+    const size_t NCOL = sizeof(palette) / sizeof(palette[0]);
+
+    bool quit = false;
+    SDL_Event ev;
+    while (!quit) {
+        while (SDL_PollEvent(&ev))
+            if (ev.type == SDL_QUIT) quit = true;
+
+        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+        SDL_RenderClear(ren);
+
+        SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+        SDL_RenderDrawLine(ren, M, H - M, W - M, H - M);
+        SDL_RenderDrawLine(ren, M, H - M, M, M);
+
+        drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
+        drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
+
+        SDL_Color black{0, 0, 0};
+        SDL_Surface *sx = TTF_RenderText_Solid(font, "Frequency (Hz)", black);
+        SDL_Texture *tx = SDL_CreateTextureFromSurface(ren, sx);
+        SDL_Rect dstx{W - M - sx->w, H - M + 15, sx->w, sx->h};
+        SDL_RenderCopy(ren, tx, nullptr, &dstx);
+        SDL_FreeSurface(sx);
+        SDL_DestroyTexture(tx);
+
+        int lx = W - M - 110, ly = M + 5;
+        SDL_Rect lg{lx - 10, ly - 5, 120, 20 * static_cast<int>(labels.size()) + 5};
+        SDL_SetRenderDrawColor(ren, 240, 240, 240, 230);
+        SDL_RenderFillRect(ren, &lg);
+
+        for (size_t k = 0; k < curves.size(); k++) {
+            SDL_Color col = palette[k % NCOL];
+            SDL_SetRenderDrawColor(ren, col.r, col.g, col.b, 255);
+
+            const auto &c = curves[k];
+            for (size_t i = 1; i < c.size(); i++)
+                SDL_RenderDrawLine(ren, int(X(c[i - 1].first)), int(Y(c[i - 1].second)),
+                                   int(X(c[i].first)), int(Y(c[i].second)));
+
+            SDL_Surface *s = TTF_RenderText_Solid(font, labels[k].c_str(), black);
+            SDL_Texture *ts = SDL_CreateTextureFromSurface(ren, s);
+            SDL_Rect bar{lx, ly + 20 * int(k) + 4, 15, 6};
+            SDL_RenderFillRect(ren, &bar);
+            SDL_Rect lbl{lx + 20, ly + 20 * int(k), s->w, s->h};
+            SDL_RenderCopy(ren, ts, nullptr, &lbl);
+            SDL_FreeSurface(s);
+            SDL_DestroyTexture(ts);
+        }
+        SDL_RenderPresent(ren);
+        SDL_Delay(16);
+    }
+
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+    TTF_Quit();
 }
 
 
@@ -3255,6 +3611,10 @@ public:
         regex ACsweep(R"(^\s*\.AC\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
         regex DCSweepPlot(R"(^\s*plot\s+\.DC\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
         regex ACsweepPlot(R"(^\s*plot\s+\.AC\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
+        regex tranPlot(R"(^\s*plot\s+\.TRAN\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
+        regex multipleDCSweepPlot(R"(^\s*plot\s+\.DC\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+[IV]\(\S+\)){2,}\s*$)",
+                                  regex::icase);
+        regex multipleACSweepPlot(R"(^\s*plot\s+\.AC\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+[IV]\(\S+\)){2,}\s*$)", regex::icase);
         regex exitplot(R"(^exit\s*plot$)");
         regex exit(R"(^exit$)");
         while (true) {
@@ -4439,7 +4799,7 @@ public:
                 string probe = match[6];
 
                 auto pts = controller.DCSweepData(src, start, stop, step, type, probe, circuit);
-                plotDC(pts, "DC sweep", type +"("+ probe +")", src);
+                plotDC(pts, "DC sweep", type + "(" + probe + ")", src);
             } else if (regex_match(input, match, ACsweepPlot)) {
                 double wStart = stod(match[1]);
                 double wStop = stod(match[2]);
@@ -4450,15 +4810,75 @@ public:
                 string probe = match[5];
 
                 auto pts = controller.ACSweepData(wStart, wStop, wStep, kind, probe, circuit);
-                plotAC(pts, "AC sweep", kind +"("+ probe +")");
+                plotAC(pts, "AC sweep", kind + "(" + probe + ")");
+            } else if (regex_match(input, match, tranPlot)) {
+                double tStart = stod(match[1]);
+                double tStop = stod(match[2]);
+                double dt = stod(match[3]);
+                int nPts = ((tStop - tStart) / dt) + 1;
+
+                string kind = match[4];
+                string probe = match[5];
+
+                auto pts = controller.TransientData(tStart, tStop, nPts, kind, probe, circuit);
+                plotTRAN(pts, "Transient: " + kind + "(" + probe + ")", probe);
+            } else if (regex_match(input, match, multipleDCSweepPlot)) {
+                string src = match[1];
+                double start = stod(match[2]);
+                double stop = stod(match[3]);
+                double step = stod(match[4]);
+
+                regex probePat(R"([IV]\(\S+\))", regex::icase);
+                sregex_iterator it(input.begin(), input.end(), probePat), end;
+
+                vector<vector<pair<double, double>>> allData;
+                vector<string> labels;
+
+                for (; it != end; ++it) {
+                    string probeToken = it->str();
+                    labels.push_back(probeToken);
+
+                    string type = probeToken.substr(0, 1);
+                    string targ = probeToken.substr(2, probeToken.size() - 3);
+                    auto d = controller.DCSweepData(src, start, stop, step, type, targ, circuit);
+                    allData.push_back(d);
+                }
+                plotMultiDC(allData, labels, src);
+            }
+
+                // ──────────────────────────────────────────────────────────────
+// MULTI‑AC ② : “plot .AC … V()/I() …” with ≥2 probes
+// ──────────────────────────────────────────────────────────────
+            else if (regex_match(input, match, multipleACSweepPlot)) {
+                double fStart = stod(match[1]);
+                double fStop = stod(match[2]);
+                double nPts = stod(match[3]);
+                double fStep = (fStop - fStart) / (nPts - 1);
+
+                regex probePat(R"([IV]\(\S+\))", regex::icase);
+                sregex_iterator it(input.begin(), input.end(), probePat), end;
+
+                vector<vector<pair<double, double>>> curves;
+                vector<string> labels;
+
+                for (; it != end; ++it) {
+                    string tok = it->str();
+                    labels.push_back(tok);
+
+                    string kind = tok.substr(0, 1);
+                    string target = tok.substr(2, tok.size() - 3);
+                    auto data = controller.ACSweepData(fStart, fStop, fStep, kind, target, circuit);
+                    curves.push_back(data);
+                }
+                plotMultiAC(curves, labels, "AC sweep - Multiple Plots");
             } else if (regex_match(input, match, reset)) {
                 circuit->reset();
                 cout << "A new schematic is created!\nStart again!\n";
-            } else if (regex_match(input, match, exitplot)){
+            } else if (regex_match(input, match, exitplot)) {
                 continue;
             } else if (regex_match(input, match, exit)) {
                 cout << "Bye Bye!\n";
-                quitter=true;
+                quitter = true;
                 return;
             } else
                 cout << "Syntax error\n";

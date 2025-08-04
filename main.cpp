@@ -11,9 +11,6 @@
 #include <SDL2/SDL2_gfx.h>
 #include <SDL2/SDL_timer.h>
 
-
-bool quitter = false;
-
 using namespace std;
 
 vector<complex<double>> solveComplexSystem(vector<vector<complex<double>>> A, vector<complex<double>> b) {
@@ -444,15 +441,18 @@ public:
 
 class ACVoltageSource : public VoltageSource {
     double amplitude;
+    double phase;
 public:
-    ACVoltageSource(string name, Node *n1, Node *n2, double amp)
-            : VoltageSource(name, 0.0, n1, n2), amplitude(amp) {}
+    ACVoltageSource(string name, Node *n1, Node *n2, double amp, double phase_)
+            : VoltageSource(name, 0.0, n1, n2), amplitude(amp), phase(phase_){}
 
     string getType() override { return "VAC"; }
 
     double getVoltage(double time) override {
         return amplitude;
     }
+
+    void setPhase (double phase_){this->phase= phase_;}
 
     void stampAC(vector<vector<complex<double>>> &A,
                  vector<complex<double>> &b,
@@ -473,7 +473,7 @@ public:
             A[j][vIdx] += complex<double>(1, 0);
             A[vIdx][j] += complex<double>(1, 0);
         }
-        b[vIdx] += complex<double>(amplitude, 0);
+        b[vIdx] += polar(amplitude, phase);
     }
 };
 
@@ -507,11 +507,13 @@ private:
     double phase;
     double amplitude;
 public:
-    ACCurrentSource(string name_, double amplitude_, Node *n1, Node *n2)
-            : CurrentSource(name_, amplitude_, n1, n2), amplitude(amplitude_), phase(0) {}
+    ACCurrentSource(string name_, double amplitude_, Node *n1, Node *n2, double phase_)
+            : CurrentSource(name_, amplitude_, n1, n2), amplitude(amplitude_), phase(phase_) {}
 
 
     double getValue() override { return amplitude; }
+
+    void setPhase (double phase_){this->phase= phase_;}
 
     void stampAC(vector<vector<complex<double>>> &A,
                  vector<complex<double>> &b,
@@ -2782,7 +2784,7 @@ public:
         double delta_t = 1e-3;
         circuit->setDeltat(delta_t);
 
-        int totalSteps = (int) ((endValue - startValue) / delta_t) + 1;
+        int totalSteps = (int)((endValue - startValue) / delta_t) + 1;
         double nextPrintTime = startValue;
 
         cout << "========== Transient Analysis ==========\n";
@@ -2791,7 +2793,7 @@ public:
         for (int step = 0; step <= totalSteps; ++step) {
             double t = startValue + step * delta_t;
 
-            for (Element *e: circuit->getElements()) {
+            for (Element* e : circuit->getElements()) {
                 e->updateTime(t);
             }
             circuit->BuildMNA();
@@ -2799,21 +2801,21 @@ public:
             auto b = circuit->getRHS();
             auto solution = gaussianElimination(A, b);
 
-            for (int i = 0; i < circuit->ordernodes.size(); i++)
+            for (int i = 0; i < circuit->ordernodes.size(); ++i)
                 circuit->ordernodes[i]->setVoltage(solution[i]);
 
-            for (Element *e: circuit->getElements()) {
+            for (Element* e : circuit->getElements()) {
                 if (circuit->currentIndexmap.count(e)) {
-                    double inew = solution[circuit->currentIndexmap[e]];
+                    double inew=solution[circuit->currentIndexmap[e]];
                     e->setCurrent(inew);
-                    if (auto *ind = dynamic_cast<Inductor *>(e)) {
+                    if (auto* ind = dynamic_cast<Inductor*>(e)) {
                         ind->updateCurrent(inew);
                     }
                 }
             }
 
-            for (Element *e: circuit->getElements()) {
-                if (auto *cap = dynamic_cast<Capacitor *>(e)) {
+            for (Element* e : circuit->getElements()) {
+                if (auto* cap = dynamic_cast<Capacitor*>(e)) {
                     double vcap = cap->getFirstNode()->getVoltage() - cap->getSecondNode()->getVoltage();
                     cap->updateVoltage(vcap);
                 }
@@ -2825,14 +2827,14 @@ public:
                 cout << "t = " << t << " s : ";
 
                 if (type == "V") {
-                    for (auto *n: circuit->ordernodes) {
+                    for (auto* n : circuit->ordernodes) {
                         if (n->getName() == target) {
                             cout << "V(" << target << ") = " << clean(n->getVoltage()) << " V";
                             break;
                         }
                     }
                 } else if (type == "I") {
-                    for (auto *e: circuit->getElements()) {
+                    for (auto* e : circuit->getElements()) {
                         if (e->getName() == target) {
                             cout << "I(" << target << ") = " << clean(e->getCurrent()) << " A";
                             break;
@@ -2850,66 +2852,62 @@ public:
 
 
     vector<pair<double, double>>
-    TransientData(double tStart, double tStop, int nPts, const string &kind, const string &target,
-                  Circuit *c) {
+    TransientData(double tStart, double tStop, int nPts,
+                  const string &kind, const string &target, Circuit *c) {
         vector<pair<double, double>> out;
         if (!preAnalysisErrs(c) || nPts < 2) return out;
 
-        double dt = (tStop - tStart) / (nPts - 1);
-        c->setDeltat(dt);
+        double delta_t = 1e-3;
+        c->setDeltat(delta_t);
         c->setType("Transient");
-        c->clear();
 
         if (kind == "V" && !c->getNodeAccess().count(target)) return out;
         if (kind == "I") {
             bool ok = false;
-            for (auto *e: c->getElements())
-                if (e->getName() == target) {
-                    ok = true;
-                    break;
-                }
+            for (auto *e : c->getElements())
+                if (e->getName() == target) { ok = true; break; }
             if (!ok) return out;
-        }
+        }double sampleInterval = (tStop - tStart) / (nPts - 1);
+        double nextSampleTime = tStart;
 
-        double t = tStart;
-        for (int step = 0; step < nPts; ++step, t += dt) {
-            for (Element *e: c->getElements()) e->updateTime(t);
+        int totalSteps = (int)((tStop - tStart) / delta_t) + 1;
 
+        for (int step = 0; step <= totalSteps; ++step) {
+            double t = tStart + step * delta_t;
+            for (auto *e : c->getElements()) e->updateTime(t);
             c->BuildMNA();
             auto sol = gaussianElimination(c->getMatrix(), c->getRHS());
 
             for (size_t i = 0; i < c->ordernodes.size(); i++)
                 c->ordernodes[i]->setVoltage(sol[i]);
 
-            for (Element *e: c->getElements())
+            for (auto *e : c->getElements())
                 if (c->currentIndexmap.count(e))
                     e->setCurrent(sol[c->currentIndexmap[e]]);
 
-            for (Element *e: c->getElements()) {
+            for (auto *e : c->getElements()) {
                 if (auto *ind = dynamic_cast<Inductor *>(e))
                     ind->updateCurrent(e->getCurrent());
                 if (auto *cap = dynamic_cast<Capacitor *>(e)) {
-                    double vcap = cap->getFirstNode()->getVoltage()
-                                  - cap->getSecondNode()->getVoltage();
+                    double vcap = cap->getFirstNode()->getVoltage() - cap->getSecondNode()->getVoltage();
                     cap->updateVoltage(vcap);
                 }
             }
-            double y = 0;
-            if (kind == "V") {
-                for (auto *n: c->ordernodes)
-                    if (n->getName() == target) {
-                        y = n->getVoltage();
-                        break;
-                    }
-            } else {
-                for (auto *e: c->getElements())
-                    if (e->getName() == target) {
-                        y = e->getCurrent();
-                        break;
-                    }
+            if (fabs(t - nextSampleTime) < delta_t / 2 || t >= tStop) {
+                double y = 0;
+                if (kind == "V") {
+                    for (auto *n : c->ordernodes)
+                        if (n->getName() == target) { y = n->getVoltage(); break; }
+                } else {
+                    for (auto *e : c->getElements())
+                        if (e->getName() == target) { y = e->getCurrent(); break; }
+                }
+
+                out.emplace_back(t, y);
+                nextSampleTime += sampleInterval;
             }
-            out.emplace_back(t, y);
         }
+
         return out;
     }
 
@@ -2947,7 +2945,7 @@ public:
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
         Element *element = nullptr;
-        element = new ACVoltageSource("AC Voltage", n1, n2, amp);
+        element = new ACVoltageSource("AC Voltage", n1, n2, amp, 0.0);
         circuit->addElement(element);
         element->getFirstNode()->addConnectedElement(element);
         element->getSecondNode()->addConnectedElement(element);
@@ -2967,7 +2965,7 @@ public:
         Node *n1 = circuit->getCreateNode(node1);
         Node *n2 = circuit->getCreateNode(node2);
         Element *element = nullptr;
-        element = new ACCurrentSource("AC Current", amp, n1, n2);
+        element = new ACCurrentSource("AC Current", amp, n1, n2, 0.0);
         circuit->addElement(element);
         element->getFirstNode()->addConnectedElement(element);
         element->getSecondNode()->addConnectedElement(element);
@@ -3067,6 +3065,117 @@ public:
             cout << endl;
         }
         cout << "=================================\n";
+    }
+
+    void PhaseSweep(double freq, double phaseStart, double phaseStop, int steps,
+                    string type, string target, Circuit* circuit) {
+        circuit->setType("AC");
+        circuit->clear();
+        ACVoltageSource* source1=nullptr;
+        ACCurrentSource* source2=nullptr;
+        for(auto &element: circuit->getElements()){
+            if(element->getType()=="VAC"){
+                source1= dynamic_cast<ACVoltageSource *>(element);
+            }
+        }
+        for(auto &element: circuit->getElements()){
+            if(element->getType()=="ACCurrentSource"){
+                source2= dynamic_cast<ACCurrentSource *>(element);
+            }
+        }
+        if (type == "V" && !circuit->getNodeAccess().count(target)) {
+            cout << "Error: Node " << target << " not found in the circuit\n";
+            return;
+        } else if (type == "I") {
+            bool found = false;
+            for (auto &element: circuit->getElements()) {
+                if (element->getName() == target) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                cout << "Error: Element " << target << " not found in the circuit\n";
+                return;
+            }
+        }
+        cout << "========== Phase Sweep ==========\n";
+        cout << "Analyzing: " << (type == "V" ? "V(" + target + ")" : "I(" + target + ")") << endl;
+        for (int i = 0; i <= steps; i++) {
+            double phase = phaseStart + i * (phaseStop - phaseStart) / steps;
+            circuit->clear();
+            if(source1!=nullptr)
+                source1->setPhase(phase * M_PI / 180.0);
+            else
+                source2->setPhase(phase * M_PI / 180.0);
+            circuit->BuildACMNA(freq * 2 * M_PI);
+            auto A = circuit->getComplexMatrix();
+            auto b = circuit->getComplexRHS();
+            auto x = solveComplexSystem(A, b);
+            cout << fixed << setprecision(3);
+            cout << "phase = " << phase << " degrees : ";
+            if (type == "V") {
+                for (int i = 0; i < circuit->ordernodes.size(); i++) {
+                    if (circuit->ordernodes[i]->getName() == target) {
+                        double magnitude = abs(x[i]);
+                        double phase2 = arg(x[i]) * 180.0 / M_PI;
+                        if (fabs(magnitude) < 1e-3)
+                            magnitude = 0.0;
+                        if (fabs(phase) < 1e-3)
+                            phase2 = 0.0;
+                        cout << "|V(" << target << ")| = " << magnitude << " V, "
+                             << "phase = " << phase2 << " degrees";
+                        break;
+                    }
+                }
+            } else if (type == "I") {
+                for (auto *e: circuit->getElements()) {
+                    if (e->getName() == target) {
+                        complex<double> current;
+                        if (circuit->currentIndexmap.count(e)) {
+                            current = x[circuit->currentIndexmap[e]];
+                        } else {
+                            string n1 = e->getFirstNode()->getName();
+                            string n2 = e->getSecondNode()->getName();
+                            double value = e->getValue();
+                            complex<double> v1 = {0, 0}, v2 = {0, 0};
+
+                            if (circuit->nodetoindex.count(n1))
+                                v1 = x[circuit->nodetoindex.at(n1)];
+                            if (circuit->nodetoindex.count(n2))
+                                v2 = x[circuit->nodetoindex.at(n2)];
+                            if (e->getType() == "Resistor") {
+                                current = (v1 - v2) / value;
+                            } else if (e->getType() == "Capacitor") {
+                                current = (v1 - v2) * complex<double>(0, value * freq * 2 * M_PI);
+                            } else if (e->getType() == "Inductor") {
+                                current = (v1 - v2) / complex<double>(0, freq * 2 * M_PI * value);
+                            } else {
+                                cout << "Cannot compute current for element type: " << e->getCategory() << endl;
+                                return;
+                            }
+                        }
+
+                        double magnitude = abs(current);
+                        double phase3 = arg(current) * 180.0 / M_PI;
+                        if (phase3 < 0)
+                            phase3 += 180;
+                        else if (phase3 > 0)
+                            phase3 -= 180;
+                        if (fabs(magnitude) < 1e-3)
+                            magnitude = 0.0;
+                        if (fabs(phase3) < 1e-3)
+                            phase3 = 0.0;
+                        cout << "|I(" << target << ")| = " << magnitude << " A, "
+                             << "phase = " << phase3 << " degrees";
+                        break;
+                    }
+                }
+            }
+            cout << endl;
+        }
+        cout << "=================================\n";
+
     }
 
 };
@@ -3609,6 +3718,7 @@ public:
         regex VAC(R"(^\s*add\s+AC\s+Voltage\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
         regex CAC(R"(^\s*add\s+AC\s+Current\s+(\S+)\s+(\S+)\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s*$)");
         regex ACsweep(R"(^\s*\.AC\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
+        regex ACPhasesweep(R"(^\s*\.AC\s+Phase\s+(-?[\d\.]+(?:[eE][+-]?\d+)?)([GMkmunp]?)\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
         regex DCSweepPlot(R"(^\s*plot\s+\.DC\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
         regex ACsweepPlot(R"(^\s*plot\s+\.AC\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
         regex tranPlot(R"(^\s*plot\s+\.TRAN\s+(\S+)\s+(\S+)\s+(\S+)\s+([VI])\((\S+)\)\s*$)", regex::icase);
@@ -4790,6 +4900,55 @@ public:
                 if (!controller.preAnalysisErrs(circuit))
                     continue;
                 controller.ACAnalysis(w_start, w_stop, N, type, nolement, circuit);
+            } else if (regex_match(input, match, ACPhasesweep)) {
+                double w_start;
+                double w_stop;
+                double N;
+                string number=match[1];
+                string unit= match[2];
+                string type = match[6].str();
+                string nolement = match[7].str();
+                try {
+                    w_start = stod(match[3].str());
+                    w_stop = stod(match[4].str());
+                    N = stod(match[5].str());
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value\n";
+                    continue;
+                }
+                double value;
+                try {
+                    value = stod(number);
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value\n";
+                    continue;
+                }
+                if (!unit.empty()) {
+                    switch (unit[0]) {
+                        case 'G':
+                            value *= 1e9;
+                            break;
+                        case 'M':
+                            value *= 1e6;
+                            break;
+                        case 'k':
+                        case 'K':
+                            value *= 1e3;
+                            break;
+                        case 'm':
+                            value *= 1e-3;
+                            break;
+                        case 'u':
+                            value *= 1e-6;
+                            break;
+                        case 'n':
+                            value *= 1e-9;
+                            break;
+                    }
+                }
+                if (!controller.preAnalysisErrs(circuit))
+                    continue;
+                controller.PhaseSweep(value, w_start, w_stop, N, type, nolement, circuit);
             } else if (regex_match(input, match, DCSweepPlot)) {
                 string src = match[1];
                 double start = stod(match[2]);
@@ -4821,6 +4980,9 @@ public:
                 string probe = match[5];
 
                 auto pts = controller.TransientData(tStart, tStop, nPts, kind, probe, circuit);
+                for (auto pt: pts){
+                    cout<<pt.second<<endl;
+                }
                 plotTRAN(pts, "Transient: " + kind + "(" + probe + ")", probe);
             } else if (regex_match(input, match, multipleDCSweepPlot)) {
                 string src = match[1];
@@ -4846,9 +5008,6 @@ public:
                 plotMultiDC(allData, labels, src);
             }
 
-                // ──────────────────────────────────────────────────────────────
-// MULTI‑AC ② : “plot .AC … V()/I() …” with ≥2 probes
-// ──────────────────────────────────────────────────────────────
             else if (regex_match(input, match, multipleACSweepPlot)) {
                 double fStart = stod(match[1]);
                 double fStop = stod(match[2]);
@@ -4878,7 +5037,6 @@ public:
                 continue;
             } else if (regex_match(input, match, exit)) {
                 cout << "Bye Bye!\n";
-                quitter = true;
                 return;
             } else
                 cout << "Syntax error\n";

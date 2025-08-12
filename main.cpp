@@ -1277,19 +1277,19 @@ public:
 
 class DataCursor {
 public:
-    bool   active;
+    bool active;
     double xData;
     double yData;
-    int    xPix;
-    int    yPix;
+    int xPix;
+    int yPix;
 
     DataCursor() : active(false), xData(0.0), yData(0.0), xPix(0), yPix(0) {}
+
     void reset() { active = false; }
 };
 
 /* squared pixel distance (screen space) */
-static int dist2(int x1, int y1, int x2, int y2)
-{
+static int dist2(int x1, int y1, int x2, int y2) {
     int dx = x1 - x2;
     int dy = y1 - y2;
     return dx * dx + dy * dy;
@@ -3254,7 +3254,7 @@ public:
                     else if (probe->getType() == "Inductor") phasor = (v1 - v2) / complex<double>(0, w * val);
                 }
             }
-            data.emplace_back(ph, std::abs(phasor));
+            data.emplace_back(ph, abs(phasor));
         }
         return data;
     }
@@ -3281,9 +3281,9 @@ void drawAxisTicks(SDL_Renderer *ren, bool isX, int p0, int p1, int fixed, doubl
 
         if (font) {
             double val = minVal + t * (maxVal - minVal);
-            std::ostringstream out;
-            out << std::fixed << std::setprecision(3) << val;
-            std::string str = out.str();
+            ostringstream out;
+            out << fixed << setprecision(3) << val;
+            string str = out.str();
             SDL_Surface *surf = TTF_RenderUTF8_Blended(font, str.c_str(), SDL_Color{0, 0, 0});
             SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
             SDL_Rect dst;
@@ -3344,24 +3344,26 @@ void plotDC(const vector<pair<double, double>> &pts, string caption, string outp
     while (!quit) {
         while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
 
-        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT)
-        {
+        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
             int mx = ev.button.x;
             int my = ev.button.y;
 
             int bestD2 = INT_MAX;
             size_t bestIdx = 0;
             for (size_t i = 0; i < pts.size(); ++i) {
-                int px = (int)X(pts[i].first);
-                int py = (int)Y(pts[i].second);
+                int px = (int) X(pts[i].first);
+                int py = (int) Y(pts[i].second);
                 int d2 = dist2(mx, my, px, py);
-                if (d2 < bestD2) { bestD2 = d2; bestIdx = i; }
+                if (d2 < bestD2) {
+                    bestD2 = d2;
+                    bestIdx = i;
+                }
             }
             cursor.active = true;
-            cursor.xData  = pts[bestIdx].first;
-            cursor.yData  = pts[bestIdx].second;
-            cursor.xPix   = (int)X(cursor.xData);
-            cursor.yPix   = (int)Y(cursor.yData);
+            cursor.xData = pts[bestIdx].first;
+            cursor.yData = pts[bestIdx].second;
+            cursor.xPix = (int) X(cursor.xData);
+            cursor.yPix = (int) Y(cursor.yData);
         }
 
 
@@ -3392,7 +3394,6 @@ void plotDC(const vector<pair<double, double>> &pts, string caption, string outp
         SDL_RenderCopy(r, textureY, nullptr, &dstY);
 
 
-
         SDL_FreeSurface(surfaceY);
         SDL_DestroyTexture(textureY);
 
@@ -3409,8 +3410,8 @@ void plotDC(const vector<pair<double, double>> &pts, string caption, string outp
             snprintf(buf, sizeof(buf), "x = %.5g   y = %.5g", cursor.xData, cursor.yData);
 
             SDL_Surface *surf = TTF_RenderUTF8_Blended(font, buf, SDL_Color{0, 0, 0});
-            SDL_Texture *tex  = SDL_CreateTextureFromSurface(r, surf);
-            SDL_Rect dst{ cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h };
+            SDL_Texture *tex = SDL_CreateTextureFromSurface(r, surf);
+            SDL_Rect dst{cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h};
             SDL_RenderCopy(r, tex, NULL, &dst);
             SDL_FreeSurface(surf);
             SDL_DestroyTexture(tex);
@@ -3468,24 +3469,26 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
     while (!quit) {
         while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
 
-        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT)
-        {
+        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
             int mx = ev.button.x;
             int my = ev.button.y;
 
             int bestD2 = INT_MAX;
             size_t bestIdx = 0;
             for (size_t i = 0; i < pts.size(); ++i) {
-                int px = (int)X(pts[i].first);
-                int py = (int)Y(pts[i].second);
+                int px = (int) X(pts[i].first);
+                int py = (int) Y(pts[i].second);
                 int d2 = dist2(mx, my, px, py);
-                if (d2 < bestD2) { bestD2 = d2; bestIdx = i; }
+                if (d2 < bestD2) {
+                    bestD2 = d2;
+                    bestIdx = i;
+                }
             }
             cursor.active = true;
-            cursor.xData  = pts[bestIdx].first;
-            cursor.yData  = pts[bestIdx].second;
-            cursor.xPix   = (int)X(cursor.xData);
-            cursor.yPix   = (int)Y(cursor.yData);
+            cursor.xData = pts[bestIdx].first;
+            cursor.yData = pts[bestIdx].second;
+            cursor.xPix = (int) X(cursor.xData);
+            cursor.yPix = (int) Y(cursor.yData);
         }
 
         SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
@@ -3533,8 +3536,8 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
             snprintf(buf, sizeof(buf), "x = %.5g   y = %.5g", cursor.xData, cursor.yData);
 
             SDL_Surface *surf = TTF_RenderUTF8_Blended(font, buf, SDL_Color{0, 0, 0});
-            SDL_Texture *tex  = SDL_CreateTextureFromSurface(ren, surf);
-            SDL_Rect dst{ cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h };
+            SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
+            SDL_Rect dst{cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h};
             SDL_RenderCopy(ren, tex, NULL, &dst);
             SDL_FreeSurface(surf);
             SDL_DestroyTexture(tex);
@@ -3605,24 +3608,26 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
     while (!quit) {
         while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
 
-        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT)
-        {
+        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
             int mx = ev.button.x;
             int my = ev.button.y;
 
             int bestD2 = INT_MAX;
             size_t bestIdx = 0;
             for (size_t i = 0; i < pts.size(); ++i) {
-                int px = (int)X(pts[i].first);
-                int py = (int)Y(pts[i].second);
+                int px = (int) X(pts[i].first);
+                int py = (int) Y(pts[i].second);
                 int d2 = dist2(mx, my, px, py);
-                if (d2 < bestD2) { bestD2 = d2; bestIdx = i; }
+                if (d2 < bestD2) {
+                    bestD2 = d2;
+                    bestIdx = i;
+                }
             }
             cursor.active = true;
-            cursor.xData  = pts[bestIdx].first;
-            cursor.yData  = pts[bestIdx].second;
-            cursor.xPix   = (int)X(cursor.xData);
-            cursor.yPix   = (int)Y(cursor.yData);
+            cursor.xData = pts[bestIdx].first;
+            cursor.yData = pts[bestIdx].second;
+            cursor.xPix = (int) X(cursor.xData);
+            cursor.yPix = (int) Y(cursor.yData);
         }
 
         SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
@@ -3669,8 +3674,8 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
             snprintf(buf, sizeof(buf), "x = %.5g   y = %.5g", cursor.xData, cursor.yData);
 
             SDL_Surface *surf = TTF_RenderUTF8_Blended(font, buf, SDL_Color{0, 0, 0});
-            SDL_Texture *tex  = SDL_CreateTextureFromSurface(ren, surf);
-            SDL_Rect dst{ cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h };
+            SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
+            SDL_Rect dst{cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h};
             SDL_RenderCopy(ren, tex, NULL, &dst);
             SDL_FreeSurface(surf);
             SDL_DestroyTexture(tex);
@@ -3690,7 +3695,7 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
 void plotPH(const vector<pair<double, double>> &pts, const string &caption, const string &ylab) {
     if (pts.empty()) return;
     if (TTF_Init() == -1) {
-        std::cerr << "TTF init error\n";
+        cerr << "TTF init error\n";
         return;
     }
 
@@ -3727,24 +3732,26 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption, cons
         while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
 
 
-        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT)
-        {
+        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
             int mx = ev.button.x;
             int my = ev.button.y;
 
             int bestD2 = INT_MAX;
             size_t bestIdx = 0;
             for (size_t i = 0; i < pts.size(); ++i) {
-                int px = (int)X(pts[i].first);
-                int py = (int)Y(pts[i].second);
+                int px = (int) X(pts[i].first);
+                int py = (int) Y(pts[i].second);
                 int d2 = dist2(mx, my, px, py);
-                if (d2 < bestD2) { bestD2 = d2; bestIdx = i; }
+                if (d2 < bestD2) {
+                    bestD2 = d2;
+                    bestIdx = i;
+                }
             }
             cursor.active = true;
-            cursor.xData  = pts[bestIdx].first;
-            cursor.yData  = pts[bestIdx].second;
-            cursor.xPix   = (int)X(cursor.xData);
-            cursor.yPix   = (int)Y(cursor.yData);
+            cursor.xData = pts[bestIdx].first;
+            cursor.yData = pts[bestIdx].second;
+            cursor.xPix = (int) X(cursor.xData);
+            cursor.yPix = (int) Y(cursor.yData);
         }
 
         SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
@@ -3788,8 +3795,8 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption, cons
             snprintf(buf, sizeof(buf), "x = %.5g   y = %.5g", cursor.xData, cursor.yData);
 
             SDL_Surface *surf = TTF_RenderUTF8_Blended(font, buf, SDL_Color{0, 0, 0});
-            SDL_Texture *tex  = SDL_CreateTextureFromSurface(ren, surf);
-            SDL_Rect dst{ cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h };
+            SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
+            SDL_Rect dst{cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h};
             SDL_RenderCopy(ren, tex, NULL, &dst);
             SDL_FreeSurface(surf);
             SDL_DestroyTexture(tex);
@@ -3810,7 +3817,7 @@ plotMultiDC(const vector<vector<pair<double, double>>> &traces, const vector<str
     if (traces.empty()) return;
 
     if (TTF_Init() == -1) {
-        std::cerr << "TTF init error\n";
+        cerr << "TTF init error\n";
         return;
     }
     TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
@@ -3856,7 +3863,6 @@ plotMultiDC(const vector<vector<pair<double, double>>> &traces, const vector<str
         while (SDL_PollEvent(&ev))
             if (ev.type == SDL_QUIT) quit = true;
 
-        
 
         SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
         SDL_RenderClear(ren);
@@ -3911,7 +3917,7 @@ void plotMultiAC(const vector<vector<pair<double, double>>> &curves, const vecto
     if (curves.empty()) return;
 
     if (TTF_Init() == -1) {
-        std::cerr << "TTF init error\n";
+        cerr << "TTF init error\n";
         return;
     }
     TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
@@ -5408,7 +5414,7 @@ private:
 public:
     Button(SDL_Rect zone, string caption, SDL_Color normal, SDL_Color hover, function<void()> onClick,
            TTF_Font *font)
-            : rect_(zone), txt_(std::move(caption)), normal_(normal), hover_(hover), onClick_(std::move(onClick)),
+            : rect_(zone), txt_(move(caption)), normal_(normal), hover_(hover), onClick_(move(onClick)),
               font_(font) {}
 
     void handleEvent(const SDL_Event &e) {
@@ -5418,11 +5424,13 @@ public:
         SDL_Point mouse{mx, my};
         hovering_ = SDL_PointInRect(&mouse, &rect_);
 
-        if (hovering_ &&
-            e.type == SDL_MOUSEBUTTONDOWN &&
-            e.button.button == SDL_BUTTON_LEFT) {
+        if (hovering_ && e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
             onClick_();
         }
+    }
+
+    void setX(int x) {
+        rect_.x = x;
     }
 
     void render(SDL_Renderer *r) const {
@@ -5440,43 +5448,243 @@ public:
 
 };
 
+class SchematicEditor {
+private:
+    SDL_Window *window_;
+    SDL_Renderer *renderer_;
+    TTF_Font *font_;
+    int gridSize = 20;
+    SDL_Color gridColor = {100, 100, 100, 255};
+    Button backButton;
+    vector<Button> componentButtons;
+    int menuWidth = 120;
+
+    struct PlacedElement {
+        string type;
+        int x1, y1, x2, y2;
+    };
+
+    vector<PlacedElement> placedElements;
+    string selectedType = "";
+    pair<int, int> firstPoint = {-1, -1};
+    SDL_Color elementColor = {255, 255, 255, 255};
+
+public:
+
+    SchematicEditor(SDL_Window *window, SDL_Renderer *renderer, TTF_Font *font, function<void()> onBack)
+            : window_(window), renderer_(renderer), font_(font),
+              backButton({10, 10, 100, 40}, "Back", {200, 50, 50, 255}, {255, 100, 100, 255}, onBack, font) {
+        SDL_Color btnNormal = {50, 50, 50, 255};
+        SDL_Color btnHover = {80, 80, 80, 255};
+        int btnWidth = 80;
+        int btnHeight = 30;
+        int btnSpacing = 5;
+        int y_pos = 10;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "R", btnNormal, btnHover, [this](){ selectedType = "R"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "C", btnNormal, btnHover, [this](){ selectedType = "C"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "L", btnNormal, btnHover, [this](){ selectedType = "L"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VDC", btnNormal, btnHover, [this](){ selectedType = "VDC"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VAC", btnNormal, btnHover, [this](){ selectedType = "VAC"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VP", btnNormal, btnHover, [this](){ selectedType = "VP"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VSIN", btnNormal, btnHover, [this](){ selectedType = "VSIN"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VCVS", btnNormal, btnHover, [this](){ selectedType = "VCVS"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VCCS", btnNormal, btnHover, [this](){ selectedType = "VCCS"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "CCVS", btnNormal, btnHover, [this](){ selectedType = "CCVS"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "CCCS", btnNormal, btnHover, [this](){ selectedType = "CCCS"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "ISIN", btnNormal, btnHover, [this](){ selectedType = "ISIN"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IP", btnNormal, btnHover, [this](){ selectedType = "IP"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IAC", btnNormal, btnHover, [this](){ selectedType = "IAC"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IDC", btnNormal, btnHover, [this](){ selectedType = "IDC"; }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "ISIN", btnNormal, btnHover, [this](){ selectedType = "ISIN"; }, font_);
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IP", btnNormal, btnHover, [this](){ selectedType = "IP"; }, font_);
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IAC", btnNormal, btnHover, [this](){ selectedType = "IAC"; }, font_);
+
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IDC", btnNormal, btnHover, [this](){ selectedType =
+                                                                                                                                   "IDC"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "W", btnNormal, btnHover, [this](){ selectedType = "W"; }, font_);
+    }
+
+
+    void handleEvent(const SDL_Event &e) {
+        backButton.handleEvent(e);
+        for (auto& btn : componentButtons) {
+            btn.handleEvent(e);
+        }
+        if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+            int mx, my;
+            SDL_GetMouseState(&mx, &my);
+            int width, height;
+            SDL_GetWindowSize(window_, &width, &height);
+            int gridRight = width - menuWidth;
+
+            if (mx < gridRight && !selectedType.empty()) {
+
+                int snapped_x = (mx / gridSize) * gridSize;
+                int snapped_y = (my / gridSize) * gridSize;
+
+                if (firstPoint.first == -1) {
+                    firstPoint = {snapped_x, snapped_y};
+                } else {
+                    int x2 = snapped_x;
+                    int y2 = snapped_y;
+                    placedElements.push_back({selectedType, firstPoint.first, firstPoint.second, x2, y2});
+                    firstPoint = {-1, -1};
+                    selectedType = "";
+                }
+            }
+        }
+        if (e.type == SDL_KEYDOWN) {
+            switch (e.key.keysym.sym) {
+                case SDLK_r:
+                    selectedType = "R";
+                    break;
+                case SDLK_c:
+                    selectedType = "C";
+                    break;
+                case SDLK_l:
+                    selectedType = "L";
+                    break;
+                case SDLK_w:
+                    selectedType = "W";
+                    break;
+            }
+        }
+    }
+
+    void render() {
+        SDL_SetRenderDrawColor(renderer_, 25, 25, 25, 255);
+        SDL_RenderClear(renderer_);
+
+        int width, height;
+        SDL_GetWindowSize(window_, &width, &height);
+
+        int grid_right = width - menuWidth;
+        int menu_x = grid_right + 20;
+
+        for (auto& btn : componentButtons) {
+            btn.setX(menu_x);
+        }
+
+        SDL_SetRenderDrawColor(renderer_, gridColor.r, gridColor.g, gridColor.b, gridColor.a);
+
+        for (int x = 0; x <= grid_right; x += gridSize) {
+            SDL_RenderDrawLine(renderer_, x, 0, x, height);
+        }
+
+        for (int y = 0; y < height; y += gridSize) {
+            SDL_RenderDrawLine(renderer_, 0, y, grid_right, y);
+        }
+
+        backButton.render(renderer_);
+        for (const auto& btn : componentButtons) {
+            btn.render(renderer_);
+        }
+
+        for (const auto& elem : placedElements) {
+            thickLineRGBA(renderer_, elem.x1, elem.y1, elem.x2, elem.y2, 2, elementColor.r, elementColor.g, elementColor.b, elementColor.a);
+
+            if (elem.type != "W") {
+                int midx = (elem.x1 + elem.x2) / 2;
+                int midy = (elem.y1 + elem.y2) / 2;
+
+                SDL_Surface* surf = TTF_RenderText_Blended(font_, elem.type.c_str(), elementColor);
+                if (surf) {
+                    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer_, surf);
+                    if (tex) {
+                        int tw = surf->w;
+                        int th = surf->h;
+                        SDL_Rect dst = {midx - tw / 2, midy - th / 2, tw, th};
+
+                        SDL_SetRenderDrawColor(renderer_, elementColor.r, elementColor.g, elementColor.b, elementColor.a);
+                        SDL_RenderDrawRect(renderer_, &dst);
+
+                        SDL_RenderCopy(renderer_, tex, nullptr, &dst);
+
+                        SDL_DestroyTexture(tex);
+                    }
+                    SDL_FreeSurface(surf);
+                }
+            }
+        }
+
+        SDL_RenderPresent(renderer_);
+    }
+};
+
+
 class MainMenu {
 private:
-    vector<Button> buttons_;
+    vector<Button> buttons;
+
 public:
-    MainMenu(SDL_Window *w, SDL_Renderer *r, TTF_Font *f) {
+    function<void()> onNewCircuit;
+    function<void()> onLoadCircuit;
+
+    MainMenu(SDL_Window *w, SDL_Renderer *r, TTF_Font *f, function<void()> onNew, function<void()> onLoad)
+            : onNewCircuit(onNew), onLoadCircuit(onLoad) {
         int ww, wh;
         SDL_GetWindowSize(w, &ww, &wh);
 
         SDL_Rect left{ww / 2 - 220, wh / 2 - 50, 200, 80};
         SDL_Rect right{ww / 2 + 20, wh / 2 - 50, 200, 80};
 
-        buttons_.emplace_back(left, "New Circuit",
-                              SDL_Color{0, 120, 215, 255},
-                              SDL_Color{30, 150, 245, 255},
-                              []() { cout << "New Circuit chosen\n"; },
-                              f);
+        buttons.emplace_back(left, "New Circuit", SDL_Color{0, 120, 215, 255},
+                             SDL_Color{30, 150, 245, 255}, onNewCircuit, f);
 
-        buttons_.emplace_back(right, "Load Circuit",
-                              SDL_Color{120, 0, 90, 255},
-                              SDL_Color{150, 30, 120, 255},
-                              []() { cout << "Load Circuit chosen\n"; },
-                              f);
+        buttons.emplace_back(right, "Load Circuit", SDL_Color{120, 0, 90, 255},
+                             SDL_Color{150, 30, 120, 255}, onLoadCircuit, f);
     }
 
-    void handle(const SDL_Event &e) { for (auto &b: buttons_) b.handleEvent(e); }
+    void handle(const SDL_Event &e) {
+        for (auto &b: buttons) b.handleEvent(e);
+    }
 
-    void draw(SDL_Renderer *r) { for (auto &b: buttons_) b.render(r); }
-
+    void draw(SDL_Renderer *r) {
+        for (auto &b: buttons) b.render(r);
+    }
 };
 
 
 int main(int argc, char *argv[]) {
-    View view;
-    view.run();
+
+   // View view;
+  //  view.run();
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0 || TTF_Init() != 0) {
-        std::cerr << "SDL/TTF init failed\n";
+        cerr << "SDL/TTF init failed\n";
         return 1;
     }
 
@@ -5490,23 +5698,50 @@ int main(int argc, char *argv[]) {
 
     TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 18);
     if (!font) {
-        std::cerr << "Font load error\n";
+        cerr << "Font load error\n";
         return 1;
     }
 
-    MainMenu menu(win, ren, font);
+    bool in_menu = true;
+    bool in_schematic = false;
+
+    unique_ptr<SchematicEditor> schematic;
+
+    auto enterSchematic = [&]() {
+        in_menu = false;
+        in_schematic = true;
+        schematic = make_unique<SchematicEditor>(win, ren, font, [&]() {
+            in_schematic = false;
+            in_menu = true;
+        });
+    };
+
+    auto loadCircuit = []() { cout << "Load Circuit chosen\n"; };
+
+    MainMenu menu(win, ren, font, enterSchematic, loadCircuit);
 
     bool quit = false;
     SDL_Event ev;
     while (!quit) {
         while (SDL_PollEvent(&ev)) {
             if (ev.type == SDL_QUIT) quit = true;
-            menu.handle(ev);
+
+            if (in_menu) {
+                menu.handle(ev);
+            } else if (in_schematic) {
+                schematic->handleEvent(ev);
+            }
         }
 
         SDL_SetRenderDrawColor(ren, 25, 25, 25, 255);
         SDL_RenderClear(ren);
-        menu.draw(ren);
+
+        if (in_menu) {
+            menu.draw(ren);
+        } else if (in_schematic) {
+            schematic->render();
+        }
+
         SDL_RenderPresent(ren);
     }
 

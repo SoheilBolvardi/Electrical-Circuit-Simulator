@@ -11,6 +11,7 @@
 #include <SDL2/SDL2_gfx.h>
 #include <SDL2/SDL_timer.h>
 
+
 using namespace std;
 
 vector<complex<double>> solveComplexSystem(vector<vector<complex<double>>> A, vector<complex<double>> b) {
@@ -545,7 +546,6 @@ protected:
     vector<Element *> elements;
     vector<Node *> nodes;
     map<string, Node *> node_access;
-    Node *gnd = nullptr;
     vector<vector<double>> A;
     vector<double> b;
     string Analysistype;
@@ -744,6 +744,7 @@ public:
         }
     }
 
+    Node *gnd = nullptr;
 };
 
 class Resistor : public Element {
@@ -2821,7 +2822,7 @@ public:
             auto b = circuit->getRHS();
             auto solution = gaussianElimination(A, b);
 
-            for (int i = 0; i < circuit->ordernodes.size(); ++i)
+            for (int i = 0; i < circuit->ordernodes.size(); i++)
                 circuit->ordernodes[i]->setVoltage(solution[i]);
 
             for (Element *e: circuit->getElements()) {
@@ -2902,7 +2903,7 @@ public:
             c->BuildMNA();
             auto sol = gaussianElimination(c->getMatrix(), c->getRHS());
 
-            for (size_t i = 0; i < c->ordernodes.size(); i++)
+            for (int i = 0; i < c->ordernodes.size(); i++)
                 c->ordernodes[i]->setVoltage(sol[i]);
 
             for (auto *e: c->getElements())
@@ -3349,8 +3350,8 @@ void plotDC(const vector<pair<double, double>> &pts, string caption, string outp
             int my = ev.button.y;
 
             int bestD2 = INT_MAX;
-            size_t bestIdx = 0;
-            for (size_t i = 0; i < pts.size(); ++i) {
+            int bestIdx = 0;
+            for (int i = 0; i < pts.size(); i++) {
                 int px = (int) X(pts[i].first);
                 int py = (int) Y(pts[i].second);
                 int d2 = dist2(mx, my, px, py);
@@ -3385,7 +3386,7 @@ void plotDC(const vector<pair<double, double>> &pts, string caption, string outp
         SDL_SetRenderDrawColor(r, 30, 144, 255, 255);
         drawAxisTicks(r, true, M, W - M, H - M, xmin, xmax, font);
         drawAxisTicks(r, false, H - M, M, M, ymin, ymax, font);
-        for (size_t i = 1; i < pts.size(); i++)
+        for (int i = 1; i < pts.size(); i++)
             SDL_RenderDrawLine(r, (int) X(pts[i - 1].first), (int) Y(pts[i - 1].second),
                                (int) X(pts[i].first), (int) Y(pts[i].second));
         SDL_Surface *surfaceY = TTF_RenderText_Solid(font, output.c_str(), color);
@@ -3474,8 +3475,8 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
             int my = ev.button.y;
 
             int bestD2 = INT_MAX;
-            size_t bestIdx = 0;
-            for (size_t i = 0; i < pts.size(); ++i) {
+            int bestIdx = 0;
+            for (int i = 0; i < pts.size(); i++) {
                 int px = (int) X(pts[i].first);
                 int py = (int) Y(pts[i].second);
                 int d2 = dist2(mx, my, px, py);
@@ -3511,7 +3512,7 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
         drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
 
         SDL_SetRenderDrawColor(ren, 220, 20, 60, 255);
-        for (size_t i = 1; i < pts.size(); i++) {
+        for (int i = 1; i < pts.size(); i++) {
             SDL_RenderDrawLine(ren, (int) X(pts[i - 1].first), (int) Y(pts[i - 1].second), (int) X(pts[i].first),
                                (int) Y(pts[i].second));
         }
@@ -3613,8 +3614,8 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
             int my = ev.button.y;
 
             int bestD2 = INT_MAX;
-            size_t bestIdx = 0;
-            for (size_t i = 0; i < pts.size(); ++i) {
+            int bestIdx = 0;
+            for (int i = 0; i < pts.size(); i++) {
                 int px = (int) X(pts[i].first);
                 int py = (int) Y(pts[i].second);
                 int d2 = dist2(mx, my, px, py);
@@ -3656,7 +3657,7 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
         drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
 
         SDL_SetRenderDrawColor(ren, 34, 139, 34, 255);
-        for (size_t i = 1; i < pts.size(); i++)
+        for (int i = 1; i < pts.size(); i++)
             SDL_RenderDrawLine(ren,
                                static_cast<int>(X(pts[i - 1].first)), static_cast<int>(Y(pts[i - 1].second)),
                                static_cast<int>(X(pts[i].first)), static_cast<int>(Y(pts[i].second)));
@@ -3737,8 +3738,8 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption, cons
             int my = ev.button.y;
 
             int bestD2 = INT_MAX;
-            size_t bestIdx = 0;
-            for (size_t i = 0; i < pts.size(); ++i) {
+            int bestIdx = 0;
+            for (int i = 0; i < pts.size(); i++) {
                 int px = (int) X(pts[i].first);
                 int py = (int) Y(pts[i].second);
                 int d2 = dist2(mx, my, px, py);
@@ -3778,7 +3779,7 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption, cons
         SDL_DestroyTexture(ty);
 
         SDL_SetRenderDrawColor(ren, 255, 99, 71, 255);
-        for (size_t i = 1; i < pts.size(); i++)
+        for (int i = 1; i < pts.size(); i++)
             SDL_RenderDrawLine(ren, int(X(pts[i - 1].first)), int(Y(pts[i - 1].second)),
                                int(X(pts[i].first)), int(Y(pts[i].second)));
 
@@ -3855,7 +3856,7 @@ plotMultiDC(const vector<vector<pair<double, double>>> &traces, const vector<str
             {0,   206, 209, 255},
             {255, 105, 180, 255}
     };
-    const size_t NCOL = sizeof(palette) / sizeof(palette[0]);
+    const int NCOL = sizeof(palette) / sizeof(palette[0]);
 
     bool quit = false;
     SDL_Event ev;
@@ -3887,11 +3888,11 @@ plotMultiDC(const vector<vector<pair<double, double>>> &traces, const vector<str
         SDL_SetRenderDrawColor(ren, 240, 240, 240, 230);
         SDL_RenderFillRect(ren, &legendBG);
 
-        for (size_t k = 0; k < traces.size(); k++) {
+        for (int k = 0; k < traces.size(); k++) {
             const auto &t = traces[k];
             SDL_Color col = palette[k % NCOL];
             SDL_SetRenderDrawColor(ren, col.r, col.g, col.b, 255);
-            for (size_t i = 1; i < t.size(); i++)
+            for (int i = 1; i < t.size(); i++)
                 SDL_RenderDrawLine(ren, int(X(t[i - 1].first)), int(Y(t[i - 1].second)),
                                    int(X(t[i].first)), int(Y(t[i].second)));
 
@@ -3956,7 +3957,7 @@ void plotMultiAC(const vector<vector<pair<double, double>>> &curves, const vecto
             {0,   206, 209, 255},
             {255, 105, 180, 255}
     };
-    const size_t NCOL = sizeof(palette) / sizeof(palette[0]);
+    const int NCOL = sizeof(palette) / sizeof(palette[0]);
 
     bool quit = false;
     SDL_Event ev;
@@ -3987,12 +3988,12 @@ void plotMultiAC(const vector<vector<pair<double, double>>> &curves, const vecto
         SDL_SetRenderDrawColor(ren, 240, 240, 240, 230);
         SDL_RenderFillRect(ren, &lg);
 
-        for (size_t k = 0; k < curves.size(); k++) {
+        for (int k = 0; k < curves.size(); k++) {
             SDL_Color col = palette[k % NCOL];
             SDL_SetRenderDrawColor(ren, col.r, col.g, col.b, 255);
 
             const auto &c = curves[k];
-            for (size_t i = 1; i < c.size(); i++)
+            for (int i = 1; i < c.size(); i++)
                 SDL_RenderDrawLine(ren, int(X(c[i - 1].first)), int(Y(c[i - 1].second)),
                                    int(X(c[i].first)), int(Y(c[i].second)));
 
@@ -5457,11 +5458,17 @@ private:
     SDL_Color gridColor = {100, 100, 100, 255};
     Button backButton;
     vector<Button> componentButtons;
+    vector<Button> leftButtons;
     int menuWidth = 120;
+
+    Controller controller;
 
     struct PlacedElement {
         string type;
         int x1, y1, x2, y2;
+        string customName = "";
+        double customValue = 0.0;
+        double phase = 0.0;
     };
 
     vector<PlacedElement> placedElements;
@@ -5469,8 +5476,37 @@ private:
     pair<int, int> firstPoint = {-1, -1};
     SDL_Color elementColor = {255, 255, 255, 255};
 
-public:
+    bool groundSelectMode = false;
+    vector<string> nodeNames;
+    vector<SDL_Rect> nodeRects;
+    map<pair<int, int>, Node *> currentPosToNode;
 
+    pair<int, int> previewEnd = {-1, -1};
+
+    Circuit *circuit = nullptr;
+
+    pair<int, int> groundPos = make_pair(-1, -1);
+
+    int leftMenuWidth = 200;
+
+    struct InputField {
+        string label;
+        string text;
+        SDL_Rect rect;
+        bool active = false;
+    };
+    Button okButton = Button({0, 0, 0, 0}, "", {0, 0, 0, 0}, {0, 0, 0, 0}, []() {}, nullptr);
+
+    bool renameMode = false;
+    bool editMode = false;
+    vector<InputField> editFields;
+    Button editOkButton = Button({0, 0, 0, 0}, "", {0, 0, 0, 0}, {0, 0, 0, 0}, []() {}, nullptr);
+    InputField renameField = {"Rename", "", {0, 0, 0, 0}};
+    map<pair<int, int>, string> customNodeNames;
+    PlacedElement *selectedEl = nullptr;
+    pair<int, int> selectedPos = {-1, -1};
+
+public:
     SchematicEditor(SDL_Window *window, SDL_Renderer *renderer, TTF_Font *font, function<void()> onBack)
             : window_(window), renderer_(renderer), font_(font),
               backButton({10, 10, 100, 40}, "Back", {200, 50, 50, 255}, {255, 100, 100, 255}, onBack, font) {
@@ -5481,66 +5517,135 @@ public:
         int btnSpacing = 5;
         int y_pos = 10;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "R", btnNormal, btnHover, [this](){ selectedType = "R"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "R", btnNormal, btnHover,
+                                      [this]() { selectedType = "R"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "C", btnNormal, btnHover, [this](){ selectedType = "C"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "C", btnNormal, btnHover,
+                                      [this]() { selectedType = "C"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "L", btnNormal, btnHover, [this](){ selectedType = "L"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "L", btnNormal, btnHover,
+                                      [this]() { selectedType = "L"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VDC", btnNormal, btnHover, [this](){ selectedType = "VDC"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VDC", btnNormal, btnHover,
+                                      [this]() { selectedType = "VDC"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VAC", btnNormal, btnHover, [this](){ selectedType = "VAC"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VAC", btnNormal, btnHover,
+                                      [this]() { selectedType = "VAC"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VP", btnNormal, btnHover, [this](){ selectedType = "VP"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VPH", btnNormal, btnHover,
+                                      [this]() { selectedType = "VPH"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VSIN", btnNormal, btnHover, [this](){ selectedType = "VSIN"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VSIN", btnNormal, btnHover,
+                                      [this]() { selectedType = "VSIN"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VCVS", btnNormal, btnHover, [this](){ selectedType = "VCVS"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VCVS", btnNormal, btnHover,
+                                      [this]() { selectedType = "VCVS"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VCCS", btnNormal, btnHover, [this](){ selectedType = "VCCS"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VCCS", btnNormal, btnHover,
+                                      [this]() { selectedType = "VCCS"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "CCVS", btnNormal, btnHover, [this](){ selectedType = "CCVS"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "CCVS", btnNormal, btnHover,
+                                      [this]() { selectedType = "CCVS"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "CCCS", btnNormal, btnHover, [this](){ selectedType = "CCCS"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "CCCS", btnNormal, btnHover,
+                                      [this]() { selectedType = "CCCS"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "ISIN", btnNormal, btnHover, [this](){ selectedType = "ISIN"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "ISIN", btnNormal, btnHover,
+                                      [this]() { selectedType = "ISIN"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IP", btnNormal, btnHover, [this](){ selectedType = "IP"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IP", btnNormal, btnHover,
+                                      [this]() { selectedType = "IP"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IAC", btnNormal, btnHover, [this](){ selectedType = "IAC"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IAC", btnNormal, btnHover,
+                                      [this]() { selectedType = "IAC"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IDC", btnNormal, btnHover, [this](){ selectedType = "IDC"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IDC", btnNormal, btnHover,
+                                      [this]() { selectedType = "IDC"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "ISIN", btnNormal, btnHover, [this](){ selectedType = "ISIN"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VP", btnNormal, btnHover,
+                                      [this]() { selectedType = "VP"; }, font_);
+        y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IP", btnNormal, btnHover, [this](){ selectedType = "IP"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "W", btnNormal, btnHover,
+                                      [this]() { selectedType = "W"; }, font_);
+        y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IAC", btnNormal, btnHover, [this](){ selectedType = "IAC"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "GND", btnNormal, btnHover, [this]() {
+            if (circuit) delete circuit;
+            circuit = buildCircuit(currentPosToNode);
+            nodeNames.clear();
+            auto nodes = circuit->getNodes();
+            for (auto n: nodes) {
+                nodeNames.push_back(n->getName());
+            }
+            sort(nodeNames.begin(), nodeNames.end());
+            if (!nodeNames.empty()) {
+                groundSelectMode = true;
+            }
+        }, font_);
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IDC", btnNormal, btnHover, [this](){ selectedType =
-                                                                                                                                   "IDC"; }, font_);
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "W", btnNormal, btnHover, [this](){ selectedType = "W"; }, font_);
+        leftButtons.emplace_back(SDL_Rect{0, y_pos - 400, btnWidth, btnHeight}, "DC", btnNormal, btnHover, [this]() {},
+                                 font_);
+        y_pos += btnHeight + btnSpacing;
+
+        leftButtons.emplace_back(SDL_Rect{0, y_pos - 400, btnWidth, btnHeight}, "AC", btnNormal, btnHover, [this]() {},
+                                 font_);
+        y_pos += btnHeight + btnSpacing;
+
+        leftButtons.emplace_back(SDL_Rect{0, y_pos - 400, btnWidth, btnHeight}, "TRAN", btnNormal, btnHover,
+                                 [this]() {}, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        leftButtons.emplace_back(SDL_Rect{0, y_pos - 400, btnWidth, btnHeight}, "Ph", btnNormal, btnHover, [this]() {},
+                                 font_);
+        y_pos += btnHeight + btnSpacing;
+
+        leftButtons.emplace_back(SDL_Rect{0, y_pos - 400, btnWidth, btnHeight}, "DTS", btnNormal, btnHover, [this]() {
+            if (circuit) delete circuit;
+            circuit = buildCircuit(currentPosToNode);
+
+            controller.showNodes(circuit);
+            controller.list(circuit);
+            controller.showCircuitDetails(circuit);
+        }, font_);
+
+
+        if (circuit) delete circuit;
+        circuit = buildCircuit(currentPosToNode);
     }
 
+    double distanceToSegment(int px, int py, int x1, int y1, int x2, int y2) {
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        if (dx == 0 && dy == 0) return hypot(px - x1, py - y1);
+        double t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+        t = max(0.0, min(1.0, t));
+        double projx = x1 + t * dx;
+        double projy = y1 + t * dy;
+        return hypot(px - projx, py - projy);
+    }
 
     void handleEvent(const SDL_Event &e) {
         backButton.handleEvent(e);
-        for (auto& btn : componentButtons) {
+        for (auto &btn: componentButtons) {
+            btn.handleEvent(e);
+        }
+        for (auto &btn: leftButtons) {
             btn.handleEvent(e);
         }
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
@@ -5550,8 +5655,7 @@ public:
             SDL_GetWindowSize(window_, &width, &height);
             int gridRight = width - menuWidth;
 
-            if (mx < gridRight && !selectedType.empty()) {
-
+            if (mx < gridRight && mx > leftMenuWidth && !selectedType.empty()) {
                 int snapped_x = (mx / gridSize) * gridSize;
                 int snapped_y = (my / gridSize) * gridSize;
 
@@ -5560,29 +5664,290 @@ public:
                 } else {
                     int x2 = snapped_x;
                     int y2 = snapped_y;
-                    placedElements.push_back({selectedType, firstPoint.first, firstPoint.second, x2, y2});
+                    PlacedElement newEl;
+                    newEl.type = selectedType;
+                    newEl.x1 = firstPoint.first;
+                    newEl.y1 = firstPoint.second;
+                    newEl.x2 = x2;
+                    newEl.y2 = y2;
+                    newEl.customName = "";
+                    newEl.customValue = (selectedType == "VDC" || selectedType == "IDC") ? 5.0 : 1.0;
+                    placedElements.push_back(newEl);
                     firstPoint = {-1, -1};
+                    previewEnd = {-1, -1};
                     selectedType = "";
                 }
             }
         }
+        if (e.type == SDL_MOUSEMOTION && firstPoint.first != -1) {
+            int mx = e.motion.x;
+            int my = e.motion.y;
+            int snapped_x = (mx / gridSize) * gridSize;
+            int snapped_y = (my / gridSize) * gridSize;
+            previewEnd = {snapped_x, snapped_y};
+        }
+
+
+        if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_RIGHT) {
+            int mx, my;
+            SDL_GetMouseState(&mx, &my);
+            int width, height;
+            SDL_GetWindowSize(window_, &width, &height);
+            int gridRight = width - menuWidth;
+            if (mx < gridRight && mx > leftMenuWidth) {
+                double minDist = 5;
+                PlacedElement *closest = nullptr;
+                double closestD = INFINITY;
+                for (auto &elem: placedElements) {
+                    double d = distanceToSegment(mx, my, elem.x1, elem.y1, elem.x2, elem.y2);
+                    if (d < closestD) {
+                        closestD = d;
+                        closest = &elem;
+                    }
+                }
+                if (closest && closestD < minDist) {
+                    selectedEl = closest;
+                    editMode = true;
+                    editFields.clear();
+                    int baseY = height / 2 - 30;
+                    editFields.push_back({"Name", closest->customName, {width / 2 - 100, baseY, 200, 30}, false});
+                    string elType = closest->type;
+                    int numFields = editFields.size();
+                    if (numFields == 1) {
+                        editFields[0].rect.y = height / 2 - 15;
+                    }
+                    SDL_Color btnNormal = {50, 50, 50, 255};
+                    SDL_Color btnHover = {80, 80, 80, 255};
+                    SDL_Rect okRect = {width / 2 - 50, baseY + numFields * 40 + 10, 100, 30};
+                    editOkButton = Button(okRect, "OK", btnNormal, btnHover, [this]() {
+                        if (selectedEl) {
+                            selectedEl->customName = editFields[0].text;
+                            if (editFields.size() > 1) {
+                                selectedEl->customValue = atof(editFields[1].text.c_str());
+                            }
+                        }
+                        editMode = false;
+                        SDL_StopTextInput();
+                    }, font_);
+                    SDL_StartTextInput();
+                }
+            }
+        }
+
+
+        if (editMode) {
+            editOkButton.handleEvent(e);
+            if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+                int mx, my;
+                SDL_GetMouseState(&mx, &my);
+                int newActive = -1;
+                for (int i = 0; i < editFields.size(); i++) {
+                    SDL_Rect r = editFields[i].rect;
+                    if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+                        newActive = i;
+                        break;
+                    }
+                }
+                if (newActive != -1) {
+                    for (int i = 0; i < editFields.size(); i++) editFields[i].active = (i == newActive);
+                    SDL_StartTextInput();
+                } else {
+                    for (auto &f: editFields) f.active = false;
+                    SDL_StopTextInput();
+                }
+            } else if (e.type == SDL_TEXTINPUT) {
+                for (auto &f: editFields) {
+                    if (f.active) {
+                        f.text += e.text.text;
+                        break;
+                    }
+                }
+            } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_BACKSPACE) {
+                for (auto &f: editFields) {
+                    if (f.active && !f.text.empty()) {
+                        f.text.pop_back();
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (groundSelectMode) {
+            if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+                int mx, my;
+                SDL_GetMouseState(&mx, &my);
+                for (int i = 0; i < nodeRects.size(); i++) {
+                    SDL_Rect r = nodeRects[i];
+                    if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+                        string selectedName = nodeNames[i];
+                        Node *selectedNode = circuit->getNodeAccess()[selectedName];
+                        selectedNode->setGround();
+                        circuit->setGround(selectedName);
+                        int minY_val = INT_MAX;
+                        pair<int, int> selectedPos = {-1, -1};
+                        for (const auto &entry: currentPosToNode) {
+                            if (entry.second == selectedNode && entry.first.second < minY_val) {
+                                minY_val = entry.first.second;
+                                selectedPos = entry.first;
+                            }
+                        }
+                        if (selectedPos.first != -1) {
+                            groundPos = selectedPos;
+                        }
+                        groundSelectMode = false;
+                        break;
+                    }
+                }
+            }
+        }
+
         if (e.type == SDL_KEYDOWN) {
+            SDL_Keymod mod = SDL_GetModState();
+
             switch (e.key.keysym.sym) {
                 case SDLK_r:
-                    selectedType = "R";
+                    if (mod & KMOD_ALT) {
+                        selectedType = "R";
+                    }
                     break;
                 case SDLK_c:
-                    selectedType = "C";
+                    if (mod & KMOD_ALT) {
+                        selectedType = "C";
+                    }
                     break;
                 case SDLK_l:
-                    selectedType = "L";
+                    if (mod & KMOD_ALT) {
+                        selectedType = "L";
+                    }
                     break;
                 case SDLK_w:
-                    selectedType = "W";
+                    if (mod & KMOD_ALT) {
+                        selectedType = "W";
+                    }
                     break;
             }
         }
+
     }
+
+    Circuit *buildCircuit(map<pair<int, int>, Node *> &outPosToNode) {
+        Circuit *newCircuit = new Circuit();
+
+        using Pos = pair<int, int>;
+        set<Pos> allPositions;
+        for (vector<PlacedElement>::const_iterator elemIt = placedElements.begin();
+             elemIt != placedElements.end(); ++elemIt) {
+            const PlacedElement &elem = *elemIt;
+            allPositions.insert(make_pair(elem.x1, elem.y1));
+            allPositions.insert(make_pair(elem.x2, elem.y2));
+        }
+
+        map<Pos, string> posToNodeName;
+        int nodeId = 0;
+        for (set<Pos>::const_iterator posIt = allPositions.begin(); posIt != allPositions.end(); ++posIt) {
+            const Pos &pos = *posIt;
+            posToNodeName[pos] = "N" + to_string(nodeId++);
+        }
+
+        map<string, string> parent;
+        for (map<Pos, string>::const_iterator it = posToNodeName.begin(); it != posToNodeName.end(); ++it) {
+            const Pos &pos = it->first;
+            const string &name = it->second;
+            parent[name] = name;
+        }
+
+        auto findParent = [&parent](string u) -> string {
+            while (parent[u] != u) {
+                u = parent[u];
+            }
+            return u;
+        };
+
+        auto unionSets = [&parent, &findParent](string u, string v) {
+            u = findParent(u);
+            v = findParent(v);
+            if (u != v) parent[u] = v;
+        };
+
+        for (vector<PlacedElement>::const_iterator elemIt = placedElements.begin();
+             elemIt != placedElements.end(); ++elemIt) {
+            const PlacedElement &elem = *elemIt;
+            if (elem.type == "W") {
+                string n1 = posToNodeName[make_pair(elem.x1, elem.y1)];
+                string n2 = posToNodeName[make_pair(elem.x2, elem.y2)];
+                unionSets(n1, n2);
+            }
+        }
+
+        map<string, Node *> rootToNode;
+        int uniqueId = 0;
+        for (map<Pos, string>::iterator it = posToNodeName.begin(); it != posToNodeName.end(); ++it) {
+            const Pos &pos = it->first;
+            string &name = it->second;
+            string root = findParent(name);
+            if (rootToNode.find(root) == rootToNode.end()) {
+                string newName = "Node" + to_string(uniqueId++);
+                Node *node = newCircuit->getCreateNode(newName);
+                rootToNode[root] = node;
+            }
+        }
+
+        map<Pos, Node *> posToNode;
+        for (map<Pos, string>::const_iterator it = posToNodeName.begin(); it != posToNodeName.end(); ++it) {
+            const Pos &pos = it->first;
+            const string &name = it->second;
+            string root = findParent(name);
+            posToNode[pos] = rootToNode[root];
+        }
+
+        for (vector<PlacedElement>::const_iterator elemIt = placedElements.begin();
+             elemIt != placedElements.end(); ++elemIt) {
+            const PlacedElement &elem = *elemIt;
+            if (elem.type == "W") continue;
+            Node *n1 = posToNode[make_pair(elem.x1, elem.y1)];
+            Node *n2 = posToNode[make_pair(elem.x2, elem.y2)];
+            if (n1 == n2) continue;
+
+            double val = elem.customValue;
+            string elName = elem.customName.empty() ? (elem.type + "_" + to_string(rand() % 1000)) : elem.customName;
+
+            Element *el = nullptr;
+            if (elem.type == "R") {
+                el = new Resistor(elName, val, n1, n2);
+            } else if (elem.type == "C") {
+                el = new Capacitor(elName, val, n1, n2);
+            } else if (elem.type == "L") {
+                el = new Inductor(elName, val, n1, n2);
+            } else if (elem.type == "VDC") {
+                el = new DCVoltageSource(elName, val, n1, n2);
+            } else if (elem.type == "IDC") {
+                el = new DCCurrentSource(elName, val, n1, n2);
+            } else if (elem.type == "VAC") {
+                el = new ACVoltageSource(elName, n1, n2, val, elem.phase);
+            }
+            if (el) {
+                newCircuit->addElement(el);
+                n1->addConnectedElement(el);
+                n2->addConnectedElement(el);
+            }
+        }
+
+        Node *ground = nullptr;
+        if (groundPos.first != -1) {
+            map<Pos, Node *>::iterator it = posToNode.find(groundPos);
+            if (it != posToNode.end()) {
+                ground = it->second;
+            }
+        }
+        if (ground) ground->setGround();
+        if (ground) newCircuit->gnd = ground;
+
+
+        outPosToNode = posToNode;
+
+        return newCircuit;
+    }
+
 
     void render() {
         SDL_SetRenderDrawColor(renderer_, 25, 25, 25, 255);
@@ -5591,44 +5956,53 @@ public:
         int width, height;
         SDL_GetWindowSize(window_, &width, &height);
 
+        int grid_left = leftMenuWidth;
         int grid_right = width - menuWidth;
         int menu_x = grid_right + 20;
 
-        for (auto& btn : componentButtons) {
+        for (auto &btn: componentButtons) {
             btn.setX(menu_x);
         }
 
         SDL_SetRenderDrawColor(renderer_, gridColor.r, gridColor.g, gridColor.b, gridColor.a);
 
-        for (int x = 0; x <= grid_right; x += gridSize) {
+        for (int x = grid_left; x <= grid_right; x += gridSize) {
             SDL_RenderDrawLine(renderer_, x, 0, x, height);
         }
-
         for (int y = 0; y < height; y += gridSize) {
-            SDL_RenderDrawLine(renderer_, 0, y, grid_right, y);
+            SDL_RenderDrawLine(renderer_, grid_left, y, grid_right, y);
         }
 
         backButton.render(renderer_);
-        for (const auto& btn : componentButtons) {
+        for (auto &btn: componentButtons) {
             btn.render(renderer_);
         }
 
-        for (const auto& elem : placedElements) {
-            thickLineRGBA(renderer_, elem.x1, elem.y1, elem.x2, elem.y2, 2, elementColor.r, elementColor.g, elementColor.b, elementColor.a);
+
+        for (auto &btn: leftButtons) {
+            btn.setX(10);
+            btn.render(renderer_);
+        }
+
+        for (const auto &elem: placedElements) {
+            thickLineRGBA(renderer_, elem.x1, elem.y1, elem.x2, elem.y2, 2, elementColor.r, elementColor.g,
+                          elementColor.b, elementColor.a);
 
             if (elem.type != "W") {
                 int midx = (elem.x1 + elem.x2) / 2;
                 int midy = (elem.y1 + elem.y2) / 2;
 
-                SDL_Surface* surf = TTF_RenderText_Blended(font_, elem.type.c_str(), elementColor);
+                string displayName = elem.customName.empty() ? elem.type : elem.customName;
+                SDL_Surface *surf = TTF_RenderText_Blended(font_, displayName.c_str(), elementColor);
                 if (surf) {
-                    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer_, surf);
+                    SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer_, surf);
                     if (tex) {
                         int tw = surf->w;
                         int th = surf->h;
                         SDL_Rect dst = {midx - tw / 2, midy - th / 2, tw, th};
 
-                        SDL_SetRenderDrawColor(renderer_, elementColor.r, elementColor.g, elementColor.b, elementColor.a);
+                        SDL_SetRenderDrawColor(renderer_, elementColor.r, elementColor.g, elementColor.b,
+                                               elementColor.a);
                         SDL_RenderDrawRect(renderer_, &dst);
 
                         SDL_RenderCopy(renderer_, tex, nullptr, &dst);
@@ -5636,6 +6010,117 @@ public:
                         SDL_DestroyTexture(tex);
                     }
                     SDL_FreeSurface(surf);
+                }
+            }
+        }
+
+        if (firstPoint.first != -1 && previewEnd.first != -1 && selectedType == "W") {
+            thickLineRGBA(renderer_, firstPoint.first, firstPoint.second, previewEnd.first, previewEnd.second, 1, 200,
+                          200, 200, 255);
+        }
+        if (groundPos.first != -1) {
+            SDL_Surface *surf = TTF_RenderText_Blended(font_, "GND", elementColor);
+            if (surf) {
+                SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer_, surf);
+                if (tex) {
+                    int tw = surf->w;
+                    int th = surf->h;
+                    SDL_Rect dst = {groundPos.first - tw / 2, groundPos.second + 10, tw, th};
+                    SDL_RenderCopy(renderer_, tex, nullptr, &dst);
+                    SDL_DestroyTexture(tex);
+                }
+                SDL_FreeSurface(surf);
+            }
+        }
+
+        if (renameMode) {
+            int width, height;
+            SDL_GetWindowSize(window_, &width, &height);
+            SDL_Rect popup = {width / 2 - 150, height / 2 - 50, 300, 100};
+            SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
+            SDL_RenderFillRect(renderer_, &popup);
+            SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
+            SDL_RenderDrawRect(renderer_, &popup);
+            SDL_Surface *labelSurf = TTF_RenderText_Blended(font_, "Enter Name:", {255, 255, 255, 255});
+            if (labelSurf) {
+                SDL_Texture *labelTex = SDL_CreateTextureFromSurface(renderer_, labelSurf);
+                SDL_Rect labelDst = {popup.x + 10, popup.y + 10, labelSurf->w, labelSurf->h};
+                SDL_RenderCopy(renderer_, labelTex, nullptr, &labelDst);
+                SDL_DestroyTexture(labelTex);
+                SDL_FreeSurface(labelSurf);
+            }
+            SDL_RenderDrawRect(renderer_, &renameField.rect);
+            SDL_Surface *textSurf = TTF_RenderText_Blended(font_, renameField.text.c_str(), {255, 255, 255, 255});
+            if (textSurf) {
+                SDL_Texture *textTex = SDL_CreateTextureFromSurface(renderer_, textSurf);
+                SDL_Rect textDst = {renameField.rect.x + 5, renameField.rect.y + 5, textSurf->w, textSurf->h};
+                SDL_RenderCopy(renderer_, textTex, nullptr, &textDst);
+                SDL_DestroyTexture(textTex);
+                SDL_FreeSurface(textSurf);
+            }
+        }
+
+        if (editMode) {
+            int width, height;
+            SDL_GetWindowSize(window_, &width, &height);
+            int numFields = editFields.size();
+            int popupHeight = numFields * 40 + 80;
+            SDL_Rect popup = {width / 2 - 150, height / 2 - popupHeight / 2, 500, popupHeight};
+            SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
+            SDL_RenderFillRect(renderer_, &popup);
+            SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
+            SDL_RenderDrawRect(renderer_, &popup);
+            for (const auto &f: editFields) {
+                SDL_Surface *labelSurf = TTF_RenderText_Blended(font_, f.label.c_str(), {255, 255, 255, 255});
+                if (labelSurf) {
+                    SDL_Texture *labelTex = SDL_CreateTextureFromSurface(renderer_, labelSurf);
+                    SDL_Rect labelDst = {f.rect.x - 80, f.rect.y + 5, labelSurf->w, labelSurf->h};
+                    SDL_RenderCopy(renderer_, labelTex, nullptr, &labelDst);
+                    SDL_DestroyTexture(labelTex);
+                    SDL_FreeSurface(labelSurf);
+                }
+                SDL_RenderDrawRect(renderer_, &f.rect);
+                if (f.active) {
+                    SDL_SetRenderDrawColor(renderer_, 0, 255, 0, 255);
+                    SDL_RenderDrawRect(renderer_, &f.rect);
+                    SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
+                }
+                SDL_Surface *textSurf = TTF_RenderText_Blended(font_, f.text.c_str(), {255, 255, 255, 255});
+                if (textSurf) {
+                    SDL_Texture *textTex = SDL_CreateTextureFromSurface(renderer_, textSurf);
+                    SDL_Rect textDst = {f.rect.x + 5, f.rect.y + 5, textSurf->w, textSurf->h};
+                    SDL_RenderCopy(renderer_, textTex, nullptr, &textDst);
+                    SDL_DestroyTexture(textTex);
+                    SDL_FreeSurface(textSurf);
+                }
+            }
+            editOkButton.render(renderer_);
+        }
+
+        if (groundSelectMode) {
+            int width, height;
+            SDL_GetWindowSize(window_, &width, &height);
+            int popupWidth = 200;
+            int popupHeight = static_cast<int>(nodeNames.size() * 30 + 20);
+            SDL_Rect popup = {width / 2 - popupWidth / 2, height / 2 - popupHeight / 2, popupWidth, popupHeight};
+            SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
+            SDL_RenderFillRect(renderer_, &popup);
+            SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
+            SDL_RenderDrawRect(renderer_, &popup);
+            int y = popup.y + 10;
+            nodeRects.clear();
+            for (const auto &name: nodeNames) {
+                SDL_Surface *surf = TTF_RenderText_Blended(font_, name.c_str(), {255, 255, 255, 255});
+                if (surf) {
+                    int tw = surf->w;
+                    int th = surf->h;
+                    SDL_Rect dst = {popup.x + 10, y, tw, th};
+                    SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer_, surf);
+                    SDL_RenderCopy(renderer_, tex, nullptr, &dst);
+                    SDL_DestroyTexture(tex);
+                    SDL_FreeSurface(surf);
+                    nodeRects.push_back(dst);
+                    y += th + 5;
                 }
             }
         }
@@ -5680,8 +6165,8 @@ public:
 
 int main(int argc, char *argv[]) {
 
-   // View view;
-  //  view.run();
+    // View view;
+    //  view.run();
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0 || TTF_Init() != 0) {
         cerr << "SDL/TTF init failed\n";

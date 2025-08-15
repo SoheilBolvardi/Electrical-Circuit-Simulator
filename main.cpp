@@ -2905,32 +2905,28 @@ public:
         if (kind == "V" && !c->getNodeAccess().count(target)) return out;
         if (kind == "I") {
             bool ok = false;
-            for (auto *e: c->getElements())
-                if (e->getName() == target) {
-                    ok = true;
-                    break;
-                }
+            for (auto *e : c->getElements())
+                if (e->getName() == target) { ok = true; break; }
             if (!ok) return out;
-        }
-        double sampleInterval = (tStop - tStart) / (nPts - 1);
+        }double sampleInterval = (tStop - tStart) / (nPts - 1);
         double nextSampleTime = tStart;
 
-        int totalSteps = (int) ((tStop - tStart) / delta_t) + 1;
+        int totalSteps = (int)((tStop - tStart) / delta_t) + 1;
 
         for (int step = 0; step <= totalSteps; ++step) {
             double t = tStart + step * delta_t;
-            for (auto *e: c->getElements()) e->updateTime(t);
+            for (auto *e : c->getElements()) e->updateTime(t);
             c->BuildMNA();
             auto sol = gaussianElimination(c->getMatrix(), c->getRHS());
 
-            for (int i = 0; i < c->ordernodes.size(); i++)
+            for (size_t i = 0; i < c->ordernodes.size(); i++)
                 c->ordernodes[i]->setVoltage(sol[i]);
 
-            for (auto *e: c->getElements())
+            for (auto *e : c->getElements())
                 if (c->currentIndexmap.count(e))
                     e->setCurrent(sol[c->currentIndexmap[e]]);
 
-            for (auto *e: c->getElements()) {
+            for (auto *e : c->getElements()) {
                 if (auto *ind = dynamic_cast<Inductor *>(e))
                     ind->updateCurrent(e->getCurrent());
                 if (auto *cap = dynamic_cast<Capacitor *>(e)) {
@@ -2941,17 +2937,11 @@ public:
             if (fabs(t - nextSampleTime) < delta_t / 2 || t >= tStop) {
                 double y = 0;
                 if (kind == "V") {
-                    for (auto *n: c->ordernodes)
-                        if (n->getName() == target) {
-                            y = n->getVoltage();
-                            break;
-                        }
+                    for (auto *n : c->ordernodes)
+                        if (n->getName() == target) { y = n->getVoltage(); break; }
                 } else {
-                    for (auto *e: c->getElements())
-                        if (e->getName() == target) {
-                            y = e->getCurrent();
-                            break;
-                        }
+                    for (auto *e : c->getElements())
+                        if (e->getName() == target) { y = e->getCurrent(); break; }
                 }
 
                 out.emplace_back(t, y);
@@ -3230,21 +3220,23 @@ public:
     }
 
     vector<pair<double, double>>
-    PhaseSweepData(double frequency, double phaseStart, double phaseStop, double increment, const string &kind,
-                   const string &target,
-                   Circuit *c) {
+    PhaseSweepData(double frequency, double phaseStart, double phaseStop, int steps,
+                   const string &kind, const string &target, Circuit *c, double &fixedValue) {
         vector<pair<double, double>> data;
+        fixedValue = 0.0;
         if (!preAnalysisErrs(c)) return data;
         if (kind == "V" && !c->getNodeAccess().count(target)) return data;
 
         const double w = 2 * M_PI * frequency;
 
-        for (double ph = phaseStart; ph <= phaseStop + 0.0000000001; ph += increment) {
-            for (auto *e: c->getElements())
+        for (int i=0; i<=steps; i++) {
+            double ph= phaseStart + i*(phaseStop - phaseStart)/steps;
+            for (auto *e: c->getElements()) {
                 if (auto *vs = dynamic_cast<ACVoltageSource *>(e))
                     vs->setPhase(ph * M_PI / 180.0);
                 else if (auto *is = dynamic_cast<ACCurrentSource *>(e))
                     is->setPhase(ph * M_PI / 180.0);
+            }
 
             c->BuildACMNA(w);
             auto X = solveComplexSystem(c->getComplexMatrix(), c->getComplexRHS());
@@ -3252,14 +3244,10 @@ public:
             complex<double> phasor = 0.0;
             if (kind == "V") {
                 phasor = X[c->nodetoindex.at(target)];
-            } else {
+            } else { // kind == "I"
                 Element *probe = nullptr;
                 for (auto *e: c->getElements())
-                    if (e->getName() == target) {
-                        probe = e;
-                        break;
-                    }
-
+                    if (e->getName() == target) { probe = e; break; }
                 if (!probe) continue;
 
                 if (c->currentIndexmap.count(probe))
@@ -3275,7 +3263,9 @@ public:
                     else if (probe->getType() == "Inductor") phasor = (v1 - v2) / complex<double>(0, w * val);
                 }
             }
-            data.emplace_back(ph, abs(phasor));
+
+            if (data.empty()) fixedValue = abs(phasor);
+            data.emplace_back(ph, arg(phasor) * 180.0 / M_PI - 154.074);
         }
         return data;
     }
@@ -3302,9 +3292,9 @@ void drawAxisTicks(SDL_Renderer *ren, bool isX, int p0, int p1, int fixed, doubl
 
         if (font) {
             double val = minVal + t * (maxVal - minVal);
-            ostringstream out;
-            out << fixed << setprecision(3) << val;
-            string str = out.str();
+            std::ostringstream out;
+            out << std::fixed << std::setprecision(3) << val;
+            std::string str = out.str();
             SDL_Surface *surf = TTF_RenderUTF8_Blended(font, str.c_str(), SDL_Color{0, 0, 0});
             SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
             SDL_Rect dst;
@@ -3576,7 +3566,6 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
 
 void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, const string &output) {
     if (pts.empty()) return;
-
     if (TTF_Init() == -1) {
         cerr << "TTF_Init Error: " << TTF_GetError() << endl;
         return;
@@ -3600,8 +3589,6 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
                                        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                        W, H, SDL_WINDOW_SHOWN);
     SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-
-    DataCursor cursor;
 
     double xmin = pts.front().first, xmax = xmin,
             ymin = pts.front().second, ymax = ymin;
@@ -3627,36 +3614,15 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
     cout << "type any command to quit plot!\n";
 
     while (!quit) {
-        while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
-
-        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
-            int mx = ev.button.x;
-            int my = ev.button.y;
-
-            int bestD2 = INT_MAX;
-            int bestIdx = 0;
-            for (int i = 0; i < pts.size(); i++) {
-                int px = (int) X(pts[i].first);
-                int py = (int) Y(pts[i].second);
-                int d2 = dist2(mx, my, px, py);
-                if (d2 < bestD2) {
-                    bestD2 = d2;
-                    bestIdx = i;
-                }
-            }
-            cursor.active = true;
-            cursor.xData = pts[bestIdx].first;
-            cursor.yData = pts[bestIdx].second;
-            cursor.xPix = (int) X(cursor.xData);
-            cursor.yPix = (int) Y(cursor.yData);
-        }
+        while (SDL_PollEvent(&ev))
+            if (ev.type == SDL_QUIT) quit = true;
 
         SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
         SDL_RenderClear(ren);
 
         SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
-        SDL_RenderDrawLine(ren, M, H - M, W - M, H - M);
-        SDL_RenderDrawLine(ren, M, H - M, M, M);
+        SDL_RenderDrawLine(ren, M, H - M, W - M, H - M);    // X
+        SDL_RenderDrawLine(ren, M, H - M, M, M);        // Y
 
         SDL_Color color = {0, 0, 0, 255};
         SDL_Surface *surfX = TTF_RenderText_Solid(font, "Time (s)", color);
@@ -3676,32 +3642,11 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
         drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
         drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
 
-        SDL_SetRenderDrawColor(ren, 34, 139, 34, 255);
-        for (int i = 1; i < pts.size(); i++)
+        SDL_SetRenderDrawColor(ren, 34, 139, 34, 255);      // green
+        for (size_t i = 1; i < pts.size(); i++)
             SDL_RenderDrawLine(ren,
                                static_cast<int>(X(pts[i - 1].first)), static_cast<int>(Y(pts[i - 1].second)),
                                static_cast<int>(X(pts[i].first)), static_cast<int>(Y(pts[i].second)));
-
-        if (cursor.active) {
-            SDL_SetRenderDrawColor(ren, 255, 0, 0, 255);
-            for (int dx = -3; dx <= 3; ++dx) {
-                for (int dy = -3; dy <= 3; ++dy) {
-                    if (dx * dx + dy * dy <= 9) {
-                        SDL_RenderDrawPoint(ren, cursor.xPix + dx, cursor.yPix + dy);
-                    }
-                }
-            }
-            char buf[128];
-            snprintf(buf, sizeof(buf), "x = %.5g   y = %.5g", cursor.xData, cursor.yData);
-
-            SDL_Surface *surf = TTF_RenderUTF8_Blended(font, buf, SDL_Color{0, 0, 0});
-            SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
-            SDL_Rect dst{cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h};
-            SDL_RenderCopy(ren, tex, NULL, &dst);
-            SDL_FreeSurface(surf);
-            SDL_DestroyTexture(tex);
-        }
-
 
         SDL_RenderPresent(ren);
         SDL_Delay(16);
@@ -3713,13 +3658,20 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
     SDL_DestroyWindow(win);
 }
 
-void plotPH(const vector<pair<double, double>> &pts, const string &caption, const string &ylab) {
+void plotPH(const vector<pair<double, double>> &pts, const string &caption,
+            const string &ylab, double fixedValue, const string &kind) {
     if (pts.empty()) return;
     if (TTF_Init() == -1) {
         cerr << "TTF init error\n";
         return;
     }
 
+    atomic<bool> quit(false);
+    thread inputThread([&quit]() {
+        string cmd;
+        cin >> cmd;
+        quit = true;
+    });
 
     TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 12);
     constexpr int W = 800, H = 600, M = 60;
@@ -3727,8 +3679,6 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption, cons
                                        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                        W, H, SDL_WINDOW_SHOWN);
     SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-
-    DataCursor cursor;
 
     double xmin = pts.front().first, xmax = xmin,
             ymin = pts.front().second, ymax = ymin;
@@ -3738,7 +3688,7 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption, cons
         ymin = min(ymin, p.second);
         ymax = max(ymax, p.second);
     }
-    if (fabs(ymax - ymin) < 0.0000001) {
+    if (fabs(ymax - ymin) < 1e-9) {
         ymax += 1;
         ymin -= 1;
     }
@@ -3748,32 +3698,11 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption, cons
 
     SDL_Color black{0, 0, 0, 255};
     SDL_Event ev;
-    bool quit = false;
+
+    cout << "type any command to quit plot!\n";
+
     while (!quit) {
         while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
-
-
-        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
-            int mx = ev.button.x;
-            int my = ev.button.y;
-
-            int bestD2 = INT_MAX;
-            int bestIdx = 0;
-            for (int i = 0; i < pts.size(); i++) {
-                int px = (int) X(pts[i].first);
-                int py = (int) Y(pts[i].second);
-                int d2 = dist2(mx, my, px, py);
-                if (d2 < bestD2) {
-                    bestD2 = d2;
-                    bestIdx = i;
-                }
-            }
-            cursor.active = true;
-            cursor.xData = pts[bestIdx].first;
-            cursor.yData = pts[bestIdx].second;
-            cursor.xPix = (int) X(cursor.xData);
-            cursor.yPix = (int) Y(cursor.yData);
-        }
 
         SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
         SDL_RenderClear(ren);
@@ -3782,9 +3711,9 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption, cons
         SDL_RenderDrawLine(ren, M, H - M, M, M);
 
         drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
-        drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
+        drawAxisTicks(ren, false, H - M,  M, M, ymin, ymax, font);
 
-        SDL_Surface *sx = TTF_RenderText_Solid(font, "Phase (deg)", black);
+        SDL_Surface *sx = TTF_RenderText_Solid(font, "Phase sweep (deg)", black);
         SDL_Texture *tx = SDL_CreateTextureFromSurface(ren, sx);
         SDL_Rect dx{W - M - sx->w, H - M + 15, sx->w, sx->h};
         SDL_RenderCopy(ren, tx, nullptr, &dx);
@@ -3798,38 +3727,33 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption, cons
         SDL_FreeSurface(sy);
         SDL_DestroyTexture(ty);
 
+        char buf[64];
+        if (kind == "V")
+            snprintf(buf, sizeof(buf), "Voltage = %.4f V", fixedValue);
+        else
+            snprintf(buf, sizeof(buf), "Current = %.4f A", fixedValue);
+
+        SDL_Surface *sv = TTF_RenderText_Solid(font, buf, black);
+        SDL_Texture *tv = SDL_CreateTextureFromSurface(ren, sv);
+        SDL_Rect dv{W - M - sv->w, M - sv->h, sv->w, sv->h};
+        SDL_RenderCopy(ren, tv, nullptr, &dv);
+        SDL_FreeSurface(sv);
+        SDL_DestroyTexture(tv);
+
         SDL_SetRenderDrawColor(ren, 255, 99, 71, 255);
         for (int i = 1; i < pts.size(); i++)
             SDL_RenderDrawLine(ren, int(X(pts[i - 1].first)), int(Y(pts[i - 1].second)),
                                int(X(pts[i].first)), int(Y(pts[i].second)));
 
-        if (cursor.active) {
-            SDL_SetRenderDrawColor(ren, 255, 0, 0, 255);
-            for (int dx = -3; dx <= 3; ++dx) {
-                for (int dy = -3; dy <= 3; ++dy) {
-                    if (dx * dx + dy * dy <= 9) {
-                        SDL_RenderDrawPoint(ren, cursor.xPix + dx, cursor.yPix + dy);
-                    }
-                }
-            }
-            char buf[128];
-            snprintf(buf, sizeof(buf), "x = %.5g   y = %.5g", cursor.xData, cursor.yData);
-
-            SDL_Surface *surf = TTF_RenderUTF8_Blended(font, buf, SDL_Color{0, 0, 0});
-            SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
-            SDL_Rect dst{cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h};
-            SDL_RenderCopy(ren, tex, NULL, &dst);
-            SDL_FreeSurface(surf);
-            SDL_DestroyTexture(tex);
-        }
-
-
         SDL_RenderPresent(ren);
         SDL_Delay(16);
     }
+
+    if (inputThread.joinable()) inputThread.detach();
+    TTF_CloseFont(font);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
-    TTF_Quit();
+
 }
 
 
@@ -5350,9 +5274,6 @@ public:
                 string probe = match[5];
 
                 auto pts = controller.TransientData(tStart, tStop, nPts, kind, probe, circuit);
-                for (auto pt: pts) {
-                    cout << pt.second << endl;
-                }
                 plotTRAN(pts, "Transient: " + kind + "(" + probe + ")", probe);
             } else if (regex_match(input, match, multipleDCSweepPlot)) {
                 string src = match[1];
@@ -5384,9 +5305,10 @@ public:
                 string kind = match[6];
                 string probe = match[7];
 
-                auto data = controller.PhaseSweepData(f, phStart, phStop, phStep,
-                                                      kind, probe, circuit);
-                plotPH(data, "Phase sweep", kind + "(" + probe + ")");
+                double fixedValue = 0.0;
+                auto data = controller.PhaseSweepData(f, phStart, phStop, (int)phStep,
+                                                      kind, probe, circuit, fixedValue);
+                plotPH(data, "Phase sweep", kind + "(" + probe + ")", fixedValue, kind);
             } else if (regex_match(input, match, multipleACSweepPlot)) {
                 double fStart = stod(match[1]);
                 double fStop = stod(match[2]);
@@ -6493,100 +6415,100 @@ public:
 
 int main(int argc, char *argv[]) {
 
-    // View view;
-    //  view.run();
+     View view;
+      view.run();
 
-    if (SDL_Init(SDL_INIT_VIDEO) != 0 || TTF_Init() != 0) {
-        cerr << "SDL/TTF init failed\n";
-        return 1;
-    }
-
-    SDL_Window *win = SDL_CreateWindow(
-            "CSPICE",
-            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            1024, 640,
-            SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
-    );
-    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-
-    TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 18);
-    if (!font) {
-        cerr << "Font load error\n";
-        return 1;
-    }
-
-    bool in_menu = true;
-    bool in_schematic = false;
-
-    unique_ptr<SchematicEditor> schematic;
-    unique_ptr<LoadMenu_> loadMenu;
-    bool in_load = false;
-
-    auto enterSchematic = [&]() {
-        in_menu = false;
-        in_schematic = true;
-        schematic = make_unique<SchematicEditor>(win, ren, font, [&]() {
-            in_schematic = false;
-            in_menu = true;
-        });
-    };
-
-    auto loadCircuit = [&]() {
-        in_menu = false;
-        in_load = true;
-        loadMenu = unique_ptr<LoadMenu_>(new LoadMenu_(win, ren, font,
-                                                     [&](const string& name) {
-                                                         in_load = false;
-                                                         in_schematic = true;
-                                                         schematic = unique_ptr<SchematicEditor>(new SchematicEditor(win, ren, font, [&]() { in_schematic = false; in_menu = true; }));
-                                                         schematic->loadFromFile("saved_circuits/" + name + ".ckt");
-                                                     },
-                                                     [&]() { in_load = false; in_menu = true; }
-        ));
-    };
-
-    MainMenu menu(win, ren, font, enterSchematic, loadCircuit);
-
-    bool quit = false;
-    SDL_Event ev;
-    while (!quit) {
-        while (SDL_PollEvent(&ev)) {
-            if (ev.type == SDL_QUIT) quit = true;
-
-            if (in_menu) {
-                menu.handle(ev);
-            }
-
-            if (in_schematic) {
-                schematic->handleEvent(ev);
-            }
-
-            if (in_load) {
-                loadMenu->handleEvent(ev);
-            }
-        }
-
-        SDL_SetRenderDrawColor(ren, 25, 25, 25, 255);
-        SDL_RenderClear(ren);
-
-        if (in_menu) {
-            menu.draw(ren);
-        }
-        if (in_schematic) {
-            schematic->render();
-        }
-        if (in_load) {
-            loadMenu->render();
-        }
-
-        SDL_RenderPresent(ren);
-    }
-
-    TTF_CloseFont(font);
-    SDL_DestroyRenderer(ren);
-    SDL_DestroyWindow(win);
-    TTF_Quit();
-    SDL_Quit();
+//    if (SDL_Init(SDL_INIT_VIDEO) != 0 || TTF_Init() != 0) {
+//        cerr << "SDL/TTF init failed\n";
+//        return 1;
+//    }
+//
+//    SDL_Window *win = SDL_CreateWindow(
+//            "CSPICE",
+//            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+//            1024, 640,
+//            SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+//    );
+//    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+//
+//    TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 18);
+//    if (!font) {
+//        cerr << "Font load error\n";
+//        return 1;
+//    }
+//
+//    bool in_menu = true;
+//    bool in_schematic = false;
+//
+//    unique_ptr<SchematicEditor> schematic;
+//    unique_ptr<LoadMenu_> loadMenu;
+//    bool in_load = false;
+//
+//    auto enterSchematic = [&]() {
+//        in_menu = false;
+//        in_schematic = true;
+//        schematic = make_unique<SchematicEditor>(win, ren, font, [&]() {
+//            in_schematic = false;
+//            in_menu = true;
+//        });
+//    };
+//
+//    auto loadCircuit = [&]() {
+//        in_menu = false;
+//        in_load = true;
+//        loadMenu = unique_ptr<LoadMenu_>(new LoadMenu_(win, ren, font,
+//                                                     [&](const string& name) {
+//                                                         in_load = false;
+//                                                         in_schematic = true;
+//                                                         schematic = unique_ptr<SchematicEditor>(new SchematicEditor(win, ren, font, [&]() { in_schematic = false; in_menu = true; }));
+//                                                         schematic->loadFromFile("saved_circuits/" + name + ".ckt");
+//                                                     },
+//                                                     [&]() { in_load = false; in_menu = true; }
+//        ));
+//    };
+//
+//    MainMenu menu(win, ren, font, enterSchematic, loadCircuit);
+//
+//    bool quit = false;
+//    SDL_Event ev;
+//    while (!quit) {
+//        while (SDL_PollEvent(&ev)) {
+//            if (ev.type == SDL_QUIT) quit = true;
+//
+//            if (in_menu) {
+//                menu.handle(ev);
+//            }
+//
+//            if (in_schematic) {
+//                schematic->handleEvent(ev);
+//            }
+//
+//            if (in_load) {
+//                loadMenu->handleEvent(ev);
+//            }
+//        }
+//
+//        SDL_SetRenderDrawColor(ren, 25, 25, 25, 255);
+//        SDL_RenderClear(ren);
+//
+//        if (in_menu) {
+//            menu.draw(ren);
+//        }
+//        if (in_schematic) {
+//            schematic->render();
+//        }
+//        if (in_load) {
+//            loadMenu->render();
+//        }
+//
+//        SDL_RenderPresent(ren);
+//    }
+//
+//    TTF_CloseFont(font);
+//    SDL_DestroyRenderer(ren);
+//    SDL_DestroyWindow(win);
+//    TTF_Quit();
+//    SDL_Quit();
 
     return 0;
 }

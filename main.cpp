@@ -532,13 +532,15 @@ public:
     }
 
     string getType() override {
-        return "ACCurrentSource";
+        return "IAC";
     }
 
     double getCurrent(double time) override {
         return amplitude;
     }
 };
+
+
 
 class Circuit {
 protected:
@@ -1289,7 +1291,6 @@ public:
     void reset() { active = false; }
 };
 
-/* squared pixel distance (screen space) */
 static int dist2(int x1, int y1, int x2, int y2) {
     int dx = x1 - x2;
     int dy = y1 - y2;
@@ -1297,6 +1298,25 @@ static int dist2(int x1, int y1, int x2, int y2) {
 }
 
 TTF_Font *globalFont = TTF_OpenFont(R"(C:\Windows\Fonts\consola.ttf)", 18);
+
+vector<string> getSavedCircuits() {
+    vector<string> files;
+    const char* dirPath = "saved_circuits";
+    DIR* dir = opendir(dirPath);
+    if (!dir) {
+        _mkdir(dirPath);
+        return files;
+    }
+    struct dirent* ent;
+    while ((ent = readdir(dir)) != nullptr) {
+        string name = ent->d_name;
+        if (name.size() > 4 && name.substr(name.size() - 4) == ".ckt") {
+            files.push_back(name.substr(0, name.size() - 4));
+        }
+    }
+    closedir(dir);
+    return files;
+}
 
 class Controller {
 public:
@@ -3110,7 +3130,7 @@ public:
             }
         }
         for (auto &element: circuit->getElements()) {
-            if (element->getType() == "ACCurrentSource") {
+            if (element->getType() == "IAC") {
                 source2 = dynamic_cast<ACCurrentSource *>(element);
             }
         }
@@ -5405,10 +5425,8 @@ public:
 
 class Button {
 private:
-    SDL_Rect rect_;
     string txt_;
     SDL_Color normal_, hover_;
-    function<void()> onClick_;
     TTF_Font *font_;
     mutable bool hovering_{false};
 
@@ -5447,6 +5465,8 @@ public:
         SDL_DestroyTexture(tex);
     }
 
+    SDL_Rect rect_;
+    function<void()> onClick_;
 };
 
 class SchematicEditor {
@@ -5467,8 +5487,14 @@ private:
         string type;
         int x1, y1, x2, y2;
         string customName = "";
-        double customValue = 0.0;
-        double phase = 0.0;
+        double customValue = 0;
+        double phase = 0;
+        double frequency = 0;
+        double offset = 0;
+        string controlNode1;
+        string controlNode2;
+        string controlElement;
+        double V1, V2, TD, TR, TF, TOn, Period;
     };
 
     vector<PlacedElement> placedElements;
@@ -5506,6 +5532,39 @@ private:
     PlacedElement *selectedEl = nullptr;
     pair<int, int> selectedPos = {-1, -1};
 
+    struct TextField {
+        SDL_Rect rect;
+        string text;
+        bool active = true;
+    };
+
+    bool saveMode = false;
+    TextField saveField;
+    Button saveOkButton = Button({0, 0, 0, 0}, "", {0, 0, 0, 0}, {0, 0, 0, 0}, []() {}, nullptr);;
+
+    void saveToFile(const string& filename) {
+        ofstream ofs(filename);
+        if (!ofs) {
+            cerr << "Failed to save file: " << filename << endl;
+            return;
+        }
+        ofs << placedElements.size() << endl;
+        for (const auto& el : placedElements) {
+            ofs << el.type << "|"
+                << el.x1 << "|" << el.y1 << "|" << el.x2 << "|" << el.y2 << "|"
+                << (el.customName.empty() ? "\"\"" : el.customName) << "|"
+                << el.customValue << "|"
+                << el.phase << "|" << el.frequency << "|" << el.offset << "|"
+                << (el.controlNode1.empty() ? "\"\"" : el.controlNode1) << "|"
+                << (el.controlNode2.empty() ? "\"\"" : el.controlNode2) << "|"
+                << (el.controlElement.empty() ? "\"\"" : el.controlElement) << "|"
+                << el.V1 << "|" << el.V2 << "|" << el.TD << "|" << el.TR << "|" << el.TF << "|"
+                << el.TOn << "|" << el.Period << endl;
+        }
+        ofs << groundPos.first << "|" << groundPos.second << endl;
+        ofs.close();
+    }
+
 public:
     SchematicEditor(SDL_Window *window, SDL_Renderer *renderer, TTF_Font *font, function<void()> onBack)
             : window_(window), renderer_(renderer), font_(font),
@@ -5516,6 +5575,17 @@ public:
         int btnHeight = 30;
         int btnSpacing = 5;
         int y_pos = 10;
+        saveField.rect = {0, 0, 200, 30};
+        saveField.text = "";
+        saveField.active = true;
+        saveOkButton = Button(SDL_Rect{0, 0, 100, 30}, "OK", SDL_Color{0, 120, 215, 255}, SDL_Color{30, 150, 245, 255},
+                              [&]() {
+                                  if (!saveField.text.empty()) {
+                                      saveToFile("saved_circuits/" + saveField.text + ".ckt");
+                                  }
+                                  saveMode = false;
+                                  SDL_StopTextInput();
+                              }, font_);
 
         componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "R", btnNormal, btnHover,
                                       [this]() { selectedType = "R"; }, font_);
@@ -5535,10 +5605,6 @@ public:
 
         componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VAC", btnNormal, btnHover,
                                       [this]() { selectedType = "VAC"; }, font_);
-        y_pos += btnHeight + btnSpacing;
-
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VPH", btnNormal, btnHover,
-                                      [this]() { selectedType = "VPH"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
         componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VSIN", btnNormal, btnHover,
@@ -5565,10 +5631,6 @@ public:
                                       [this]() { selectedType = "ISIN"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IP", btnNormal, btnHover,
-                                      [this]() { selectedType = "IP"; }, font_);
-        y_pos += btnHeight + btnSpacing;
-
         componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "IAC", btnNormal, btnHover,
                                       [this]() { selectedType = "IAC"; }, font_);
         y_pos += btnHeight + btnSpacing;
@@ -5577,13 +5639,14 @@ public:
                                       [this]() { selectedType = "IDC"; }, font_);
         y_pos += btnHeight + btnSpacing;
 
-        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VP", btnNormal, btnHover,
-                                      [this]() { selectedType = "VP"; }, font_);
+        componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "VPULSE", btnNormal, btnHover,
+                                      [this]() { selectedType = "VPULSE"; }, font_);
         y_pos += btnHeight + btnSpacing;
-
+        
         componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "W", btnNormal, btnHover,
                                       [this]() { selectedType = "W"; }, font_);
         y_pos += btnHeight + btnSpacing;
+
 
         componentButtons.emplace_back(SDL_Rect{0, y_pos, btnWidth, btnHeight}, "GND", btnNormal, btnHover, [this]() {
             if (circuit) delete circuit;
@@ -5598,6 +5661,9 @@ public:
                 groundSelectMode = true;
             }
         }, font_);
+
+        leftButtons.emplace_back(SDL_Rect{10, 60, 100, 40}, "Save", SDL_Color{0, 200, 0, 255}, SDL_Color{30, 230, 30, 255},
+                                 [&]() { saveMode = true; SDL_StartTextInput(); }, font_);
 
         leftButtons.emplace_back(SDL_Rect{0, y_pos - 400, btnWidth, btnHeight}, "DC", btnNormal, btnHover, [this]() {},
                                  font_);
@@ -5614,6 +5680,7 @@ public:
         leftButtons.emplace_back(SDL_Rect{0, y_pos - 400, btnWidth, btnHeight}, "Ph", btnNormal, btnHover, [this]() {},
                                  font_);
         y_pos += btnHeight + btnSpacing;
+
 
         leftButtons.emplace_back(SDL_Rect{0, y_pos - 400, btnWidth, btnHeight}, "DTS", btnNormal, btnHover, [this]() {
             if (circuit) delete circuit;
@@ -5671,7 +5738,7 @@ public:
                     newEl.x2 = x2;
                     newEl.y2 = y2;
                     newEl.customName = "";
-                    newEl.customValue = (selectedType == "VDC" || selectedType == "IDC") ? 5.0 : 1.0;
+                    newEl.customValue = 1;
                     placedElements.push_back(newEl);
                     firstPoint = {-1, -1};
                     previewEnd = {-1, -1};
@@ -5712,9 +5779,37 @@ public:
                     int baseY = height / 2 - 30;
                     editFields.push_back({"Name", closest->customName, {width / 2 - 100, baseY, 200, 30}, false});
                     string elType = closest->type;
+                    if (elType == "R" || elType == "C" || elType == "L" || elType == "VDC" || elType == "IDC") {
+                        editFields.push_back({"Value", to_string(closest->customValue), {width / 2 - 100, baseY + 40, 200, 30}, false});
+                    } else if (elType == "VAC" || elType == "IAC") {
+                        editFields.push_back({"Ampl", to_string(closest->customValue), {width / 2 - 100, baseY + 40, 200, 30}, false});
+                        editFields.push_back({"Phase", to_string(closest->phase), {width / 2 - 100, baseY + 80, 200, 30}, false});
+                    } else if (elType == "VSIN" || elType == "ISIN") {
+                        editFields.push_back({"Ampl", to_string(closest->customValue), {width / 2 - 100, baseY + 40, 200, 30}, false});
+                        editFields.push_back({"Freq", to_string(closest->frequency), {width / 2 - 100, baseY + 80, 200, 30}, false});
+                        editFields.push_back({"Offset", to_string(closest->offset), {width / 2 - 100, baseY + 120, 200, 30}, false});
+                    } else if (elType == "VCVS" || elType == "VCCS") {
+                        editFields.push_back({"Gain", to_string(closest->customValue), {width / 2 - 100, baseY + 40, 200, 30}, false});
+                        editFields.push_back({"CNode1", closest->controlNode1, {width / 2 - 100, baseY + 80, 200, 30}, false});
+                        editFields.push_back({"CNode2", closest->controlNode2, {width / 2 - 100, baseY + 120, 200, 30}, false});
+                    } else if (elType == "CCVS" || elType == "CCCS") {
+                        editFields.push_back({"Gain", to_string(closest->customValue), {width / 2 - 100, baseY + 40, 200, 30}, false});
+                        editFields.push_back({"CElem", closest->controlElement, {width / 2 - 100, baseY + 80, 200, 30}, false});
+                    } else if (elType == "VPULSE") {
+                        editFields.push_back({"V1", to_string(closest->V1), {width / 2 - 100, baseY + 40, 200, 30}, false});
+                        editFields.push_back({"V2", to_string(closest->V2), {width / 2 - 100, baseY + 80, 200, 30}, false});
+                        editFields.push_back({"TD", to_string(closest->TD), {width / 2 - 100, baseY + 120, 200, 30}, false});
+                        editFields.push_back({"TR", to_string(closest->TR), {width / 2 - 100, baseY + 160, 200, 30}, false});
+                        editFields.push_back({"TF", to_string(closest->TF), {width / 2 - 100, baseY + 200, 200, 30}, false});
+                        editFields.push_back({"TON", to_string(closest->TOn), {width / 2 - 100, baseY + 240, 200, 30}, false});
+                        editFields.push_back({"Period", to_string(closest->Period), {width / 2 - 100, baseY + 280, 200, 30}, false});
+                    }
+
                     int numFields = editFields.size();
-                    if (numFields == 1) {
-                        editFields[0].rect.y = height / 2 - 15;
+                    int fieldHeight = 40;
+                    int popupHeight = numFields * fieldHeight + 50;
+                    for (int i = 0; i < numFields; i++) {
+                        editFields[i].rect.y = height / 2 - (numFields * 20) + i * fieldHeight;
                     }
                     SDL_Color btnNormal = {50, 50, 50, 255};
                     SDL_Color btnHover = {80, 80, 80, 255};
@@ -5722,13 +5817,74 @@ public:
                     editOkButton = Button(okRect, "OK", btnNormal, btnHover, [this]() {
                         if (selectedEl) {
                             selectedEl->customName = editFields[0].text;
-                            if (editFields.size() > 1) {
-                                selectedEl->customValue = atof(editFields[1].text.c_str());
+                            string elType = selectedEl->type;
+                            if (elType == "R" || elType == "C" || elType == "L" || elType == "VDC" || elType == "IDC") {
+                                if (editFields.size() > 1) {
+                                    selectedEl->customValue = atof(editFields[1].text.c_str());
+                                }
+                            } else if (elType == "VAC" || elType == "IAC") {
+                                if (editFields.size() > 1) {
+                                    selectedEl->customValue = atof(editFields[1].text.c_str());
+                                }
+                                if (editFields.size() > 2) {
+                                    selectedEl->phase = atof(editFields[2].text.c_str());
+                                }
+                            } else if (elType == "VSIN" || elType == "ISIN") {
+                                if (editFields.size() > 1) {
+                                    selectedEl->customValue = atof(editFields[1].text.c_str());
+                                }
+                                if (editFields.size() > 2) {
+                                    selectedEl->frequency = atof(editFields[2].text.c_str());
+                                }
+                                if (editFields.size() > 3) {
+                                    selectedEl->offset = atof(editFields[3].text.c_str());
+                                }
+                            } else if (elType == "VCVS" || elType == "VCCS") {
+                                if (editFields.size() > 1) {
+                                    selectedEl->customValue = atof(editFields[1].text.c_str());
+                                }
+                                if (editFields.size() > 2) {
+                                    selectedEl->controlNode1 = editFields[2].text;
+                                }
+                                if (editFields.size() > 3) {
+                                    selectedEl->controlNode2 = editFields[3].text;
+                                }
+                            } else if (elType == "CCVS" || elType == "CCCS") {
+                                if (editFields.size() > 1) {
+                                    selectedEl->customValue = atof(editFields[1].text.c_str());
+                                }
+                                if (editFields.size() > 2) {
+                                    selectedEl->controlElement = editFields[2].text;
+                                }
+                            } else if (elType == "VPULSE") {
+                                if (editFields.size() > 1) {
+                                    selectedEl->V1 = atof(editFields[1].text.c_str());
+                                }
+                                if (editFields.size() > 2) {
+                                    selectedEl->V2 = atof(editFields[2].text.c_str());
+                                }
+                                if (editFields.size() > 3) {
+                                    selectedEl->TD = atof(editFields[3].text.c_str());
+                                }
+                                if (editFields.size() > 4) {
+                                    selectedEl->TR = atof(editFields[4].text.c_str());
+                                }
+                                if (editFields.size() > 5) {
+                                    selectedEl->TF = atof(editFields[5].text.c_str());
+                                }
+                                if (editFields.size() > 6) {
+                                    selectedEl->TOn = atof(editFields[6].text.c_str());
+                                }
+                                if (editFields.size() > 7) {
+                                    selectedEl->Period = atof(editFields[7].text.c_str());
+                                }
                             }
+
                         }
                         editMode = false;
                         SDL_StopTextInput();
                     }, font_);
+
                     SDL_StartTextInput();
                 }
             }
@@ -5801,6 +5957,17 @@ public:
             }
         }
 
+        if (saveMode) {
+            saveOkButton.handleEvent(e);
+            if (e.type == SDL_TEXTINPUT) {
+                saveField.text += e.text.text;
+            } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_BACKSPACE && !saveField.text.empty()) {
+                saveField.text.pop_back();
+            } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) {
+                saveOkButton.onClick_();
+            }
+        }
+
         if (e.type == SDL_KEYDOWN) {
             SDL_Keymod mod = SDL_GetModState();
 
@@ -5836,7 +6003,7 @@ public:
         using Pos = pair<int, int>;
         set<Pos> allPositions;
         for (vector<PlacedElement>::const_iterator elemIt = placedElements.begin();
-             elemIt != placedElements.end(); ++elemIt) {
+            elemIt != placedElements.end(); ++elemIt) {
             const PlacedElement &elem = *elemIt;
             allPositions.insert(make_pair(elem.x1, elem.y1));
             allPositions.insert(make_pair(elem.x2, elem.y2));
@@ -5924,6 +6091,42 @@ public:
                 el = new DCCurrentSource(elName, val, n1, n2);
             } else if (elem.type == "VAC") {
                 el = new ACVoltageSource(elName, n1, n2, val, elem.phase);
+            } else if (elem.type == "IAC") {
+                el = new ACCurrentSource(elName, val, n1, n2, elem.phase);
+            } else if (elem.type == "VSIN") {
+                el = new SinusoidalVoltageSource(elName, val, elem.frequency, elem.offset, n1, n2);
+            } else if (elem.type == "ISIN") {
+                el = new SinusoidalCurrentSource(elName, val, elem.frequency, elem.offset, n1, n2);
+            } else if (elem.type == "VCVS") {
+                Node *ctrl1 = newCircuit->getCreateNode(elem.controlNode1);
+                Node *ctrl2 = newCircuit->getCreateNode(elem.controlNode2);
+                el = new VCVS(elName, elem.customValue, ctrl1, ctrl2, n1, n2);
+            } else if (elem.type == "VCCS") {
+                Node *ctrl1 = newCircuit->getCreateNode(elem.controlNode1);
+                Node *ctrl2 = newCircuit->getCreateNode(elem.controlNode2);
+                el = new VCCS(elName, elem.customValue, ctrl1, ctrl2, n1, n2);
+            } else if (elem.type == "CCVS") {
+                auto elements = newCircuit->getElements();
+                Element *cElement = nullptr;
+                for (auto &e: elements) {
+                    if (e->getName() == elem.controlElement) {
+                        cElement = e;
+                        break;
+                    }
+                }
+                el = new CCVS(elName, elem.customValue, n1, n2, cElement);
+            } else if (elem.type == "CCCS") {
+                auto elements = newCircuit->getElements();
+                Element *cElement = nullptr;
+                for (auto &e: elements) {
+                    if (e->getName() == elem.controlElement) {
+                        cElement = e;
+                        break;
+                    }
+                }
+                el = new CCCS(elName, elem.customValue, n1, n2, cElement);
+            } else if (elem.type == "VPULSE") {
+                el = new PulseVoltageSource(elName, elem.V1, elem.V2, elem.TD, elem.TR, elem.TF, elem.TOn, elem.Period, n1, n2);
             }
             if (el) {
                 newCircuit->addElement(el);
@@ -6065,7 +6268,7 @@ public:
             SDL_GetWindowSize(window_, &width, &height);
             int numFields = editFields.size();
             int popupHeight = numFields * 40 + 80;
-            SDL_Rect popup = {width / 2 - 150, height / 2 - popupHeight / 2, 500, popupHeight};
+            SDL_Rect popup = {width / 2 - 200, height / 2 - popupHeight / 2, 500, popupHeight};
             SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
             SDL_RenderFillRect(renderer_, &popup);
             SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
@@ -6125,7 +6328,130 @@ public:
             }
         }
 
+        if (saveMode) {
+            int width, height;
+            SDL_GetWindowSize(window_, &width, &height);
+            SDL_Rect popup = {width / 2 - 150, height / 2 - 50, 300, 100};
+            SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
+            SDL_RenderFillRect(renderer_, &popup);
+            SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
+            SDL_RenderDrawRect(renderer_, &popup);
+
+            SDL_Surface* labelSurf = TTF_RenderText_Blended(font_, "Enter Circuit Name:", {255, 255, 255, 255});
+            if (labelSurf) {
+                SDL_Texture* labelTex = SDL_CreateTextureFromSurface(renderer_, labelSurf);
+                SDL_Rect labelDst = {popup.x + 10, popup.y + 10, labelSurf->w, labelSurf->h};
+                SDL_RenderCopy(renderer_, labelTex, nullptr, &labelDst);
+                SDL_DestroyTexture(labelTex);
+                SDL_FreeSurface(labelSurf);
+            }
+
+            saveField.rect = {popup.x + 10, popup.y + 40, 200, 30};
+            SDL_RenderDrawRect(renderer_, &saveField.rect);
+            SDL_Surface* textSurf = TTF_RenderText_Blended(font_, saveField.text.c_str(), {255, 255, 255, 255});
+            if (textSurf) {
+                SDL_Texture* textTex = SDL_CreateTextureFromSurface(renderer_, textSurf);
+                SDL_Rect textDst = {saveField.rect.x + 5, saveField.rect.y + 5, textSurf->w, textSurf->h};
+                SDL_RenderCopy(renderer_, textTex, nullptr, &textDst);
+                SDL_DestroyTexture(textTex);
+                SDL_FreeSurface(textSurf);
+            }
+
+            saveOkButton.rect_ = {popup.x + 220, popup.y + 40, 70, 30};
+            saveOkButton.render(renderer_);
+        }
+
         SDL_RenderPresent(renderer_);
+    }
+
+    void loadFromFile(const string& filename) {
+        ifstream ifs(filename);
+        if (!ifs) {
+            cerr << "Failed to load file: " << filename << endl;
+            return;
+        }
+        int size;
+        ifs >> size;
+        ifs.ignore(numeric_limits<streamsize>::max(), '\n');
+        placedElements.clear();
+        placedElements.resize(size);
+        for (auto& el : placedElements) {
+            string line;
+            getline(ifs, line);
+            stringstream ss(line);
+            string token;
+
+            getline(ss, el.type, '|');
+            getline(ss, token, '|'); el.x1 = stoi(token);
+            getline(ss, token, '|'); el.y1 = stoi(token);
+            getline(ss, token, '|'); el.x2 = stoi(token);
+            getline(ss, token, '|'); el.y2 = stoi(token);
+            getline(ss, token, '|'); el.customName = (token == "\"\"" ? "" : token);
+            getline(ss, token, '|'); el.customValue = stod(token);
+            getline(ss, token, '|'); el.phase = stod(token);
+            getline(ss, token, '|'); el.frequency = stod(token);
+            getline(ss, token, '|'); el.offset = stod(token);
+            getline(ss, token, '|'); el.controlNode1 = (token == "\"\"" ? "" : token);
+            getline(ss, token, '|'); el.controlNode2 = (token == "\"\"" ? "" : token);
+            getline(ss, token, '|'); el.controlElement = (token == "\"\"" ? "" : token);
+            getline(ss, token, '|'); el.V1 = stod(token);
+            getline(ss, token, '|'); el.V2 = stod(token);
+            getline(ss, token, '|'); el.TD = stod(token);
+            getline(ss, token, '|'); el.TR = stod(token);
+            getline(ss, token, '|'); el.TF = stod(token);
+            getline(ss, token, '|'); el.TOn = stod(token);
+            getline(ss, token, '|'); el.Period = stod(token);
+        }
+        string line;
+        getline(ifs, line);
+        stringstream ss(line);
+        string token;
+        getline(ss, token, '|'); groundPos.first = stoi(token);
+        getline(ss, token, '|'); groundPos.second = stoi(token);
+        ifs.close();
+        delete circuit;
+        circuit = buildCircuit(currentPosToNode);
+    }
+
+};
+
+class LoadMenu_ {
+private:
+    vector<Button> fileButtons;
+    Button backButton = Button({0, 0, 0, 0}, "", {0, 0, 0, 0}, {0, 0, 0, 0}, []() {}, nullptr);;
+    SDL_Window* window_;
+    SDL_Renderer* renderer_;
+    TTF_Font* font_;
+
+public:
+    LoadMenu_(SDL_Window* w, SDL_Renderer* r, TTF_Font* f, function<void(const string&)> onSelect, function<void()> onBack)
+            : window_(w), renderer_(r), font_(f) {
+        vector<string> files = getSavedCircuits();
+        int ww, wh;
+        SDL_GetWindowSize(window_, &ww, &wh);
+        int y = wh / 2 - (files.size() * 25);
+        for (const auto& file : files) {
+            SDL_Rect rect{ww / 2 - 100, y, 200, 40};
+            fileButtons.emplace_back(rect, file, SDL_Color{0, 120, 215, 255}, SDL_Color{30, 150, 245, 255},
+                                     [onSelect, file]() { onSelect(file); }, font_);
+            y += 50;
+        }
+        SDL_Rect backRect{ww / 2 - 100, y + 20, 200, 40};
+        backButton = Button(backRect, "Back", SDL_Color{120, 0, 90, 255}, SDL_Color{150, 30, 120, 255}, onBack, font_);
+    }
+
+    void handleEvent(const SDL_Event& e) {
+        for (auto& btn : fileButtons) {
+            btn.handleEvent(e);
+        }
+        backButton.handleEvent(e);
+    }
+
+    void render() {
+        for (auto& btn : fileButtons) {
+            btn.render(renderer_);
+        }
+        backButton.render(renderer_);
     }
 };
 
@@ -6151,6 +6477,8 @@ public:
 
         buttons.emplace_back(right, "Load Circuit", SDL_Color{120, 0, 90, 255},
                              SDL_Color{150, 30, 120, 255}, onLoadCircuit, f);
+
+
     }
 
     void handle(const SDL_Event &e) {
@@ -6191,6 +6519,8 @@ int main(int argc, char *argv[]) {
     bool in_schematic = false;
 
     unique_ptr<SchematicEditor> schematic;
+    unique_ptr<LoadMenu_> loadMenu;
+    bool in_load = false;
 
     auto enterSchematic = [&]() {
         in_menu = false;
@@ -6201,7 +6531,19 @@ int main(int argc, char *argv[]) {
         });
     };
 
-    auto loadCircuit = []() { cout << "Load Circuit chosen\n"; };
+    auto loadCircuit = [&]() {
+        in_menu = false;
+        in_load = true;
+        loadMenu = unique_ptr<LoadMenu_>(new LoadMenu_(win, ren, font,
+                                                     [&](const string& name) {
+                                                         in_load = false;
+                                                         in_schematic = true;
+                                                         schematic = unique_ptr<SchematicEditor>(new SchematicEditor(win, ren, font, [&]() { in_schematic = false; in_menu = true; }));
+                                                         schematic->loadFromFile("saved_circuits/" + name + ".ckt");
+                                                     },
+                                                     [&]() { in_load = false; in_menu = true; }
+        ));
+    };
 
     MainMenu menu(win, ren, font, enterSchematic, loadCircuit);
 
@@ -6213,8 +6555,14 @@ int main(int argc, char *argv[]) {
 
             if (in_menu) {
                 menu.handle(ev);
-            } else if (in_schematic) {
+            }
+
+            if (in_schematic) {
                 schematic->handleEvent(ev);
+            }
+
+            if (in_load) {
+                loadMenu->handleEvent(ev);
             }
         }
 
@@ -6223,8 +6571,12 @@ int main(int argc, char *argv[]) {
 
         if (in_menu) {
             menu.draw(ren);
-        } else if (in_schematic) {
+        }
+        if (in_schematic) {
             schematic->render();
+        }
+        if (in_load) {
+            loadMenu->render();
         }
 
         SDL_RenderPresent(ren);

@@ -15,36 +15,36 @@
 using namespace std;
 
 vector<complex<double>> solveComplexSystem(vector<vector<complex<double>>> A, vector<complex<double>> b) {
-int n = b.size();
-vector<complex<double>> x(n, 0.0);
-for (int i = 0; i < n; i++) {
-int pivot = i;
-for (int row = i + 1; row < n; ++row) {
-if (abs(A[row][i]) > abs(A[pivot][i])) {
-pivot = row;
-}
-}
-if (abs(A[pivot][i]) < 1e-12) {
-throw runtime_error("Matrix is singular or nearly singular");
-}
-swap(A[i], A[pivot]);
-swap(b[i], b[pivot]);
-for (int row = i + 1; row < n; ++row) {
-complex<double> factor = A[row][i] / A[i][i];
-for (int col = i; col < n; ++col) {
-A[row][col] -= factor * A[i][col];
-}
-b[row] -= factor * b[i];
-}
-}
-for (int i = n - 1; i >= 0; --i) {
-complex<double> sum = b[i];
-for (int col = i + 1; col < n; ++col) {
-sum -= A[i][col] * x[col];
-}
-x[i] = sum / A[i][i];
-}
-return x;
+    int n = b.size();
+    vector<complex<double>> x(n, 0.0);
+    for (int i = 0; i < n; i++) {
+        int pivot = i;
+        for (int row = i + 1; row < n; ++row) {
+            if (abs(A[row][i]) > abs(A[pivot][i])) {
+                pivot = row;
+            }
+        }
+        if (abs(A[pivot][i]) < 1e-12) {
+            throw runtime_error("Matrix is singular or nearly singular");
+        }
+        swap(A[i], A[pivot]);
+        swap(b[i], b[pivot]);
+        for (int row = i + 1; row < n; ++row) {
+            complex<double> factor = A[row][i] / A[i][i];
+            for (int col = i; col < n; ++col) {
+                A[row][col] -= factor * A[i][col];
+            }
+            b[row] -= factor * b[i];
+        }
+    }
+    for (int i = n - 1; i >= 0; --i) {
+        complex<double> sum = b[i];
+        for (int col = i + 1; col < n; ++col) {
+            sum -= A[i][col] * x[col];
+        }
+        x[i] = sum / A[i][i];
+    }
+    return x;
 }
 
 vector<double> gaussianElimination(const vector<vector<double>> &A_in, const vector<double> &b_in) {
@@ -179,11 +179,11 @@ public:
     virtual void updateTime(double t) { currenttime = t; }
 
     virtual void stampAC(vector<vector<complex<double>>> &A,
-    vector<complex<double>> &b,
-            map<string, int> &nodeToIndex,
-    int &voltageIndex,
-            map<Element *, int> &currentIndexmap,
-    double omega) {}
+                         vector<complex<double>> &b,
+                         map<string, int> &nodeToIndex,
+                         int &voltageIndex,
+                         map<Element *, int> &currentIndexmap,
+                         double omega) {}
 
     virtual ~Element() = default;
 };
@@ -236,11 +236,11 @@ public:
     }
 
     void stampAC(vector<vector<complex<double>>> &A,
-    vector<complex<double>> &b,
-            map<string, int> &nodeToIndex,
-    int &voltageIndex,
-            map<Element *, int> &currentIndexmap,
-    double omega) override {
+                 vector<complex<double>> &b,
+                 map<string, int> &nodeToIndex,
+                 int &voltageIndex,
+                 map<Element *, int> &currentIndexmap,
+                 double omega) override {
         bool hasN1 = !node1->isGroundd();
         bool hasN2 = !node2->isGroundd();
         int i = hasN1 ? nodeToIndex[node1->getName()] : -1;
@@ -356,11 +356,11 @@ public:
     }
 
     void stampAC(vector<vector<complex<double>>> &A,
-    vector<complex<double>> &b,
-            map<string, int> &nodeToIndex,
-    int &voltageIndex,
-            map<Element *, int> &currentIndexmap,
-    double omega) override {
+                 vector<complex<double>> &b,
+                 map<string, int> &nodeToIndex,
+                 int &voltageIndex,
+                 map<Element *, int> &currentIndexmap,
+                 double omega) override {
         int i = node1->isGroundd() ? -1 : nodeToIndex[node1->getName()];
         int j = node2->isGroundd() ? -1 : nodeToIndex[node2->getName()];
 
@@ -456,11 +456,11 @@ public:
     void setPhase(double phase_) { this->phase = phase_; }
 
     void stampAC(vector<vector<complex<double>>> &A,
-    vector<complex<double>> &b,
-            map<string, int> &nodeToIndex,
-    int &voltageIndex,
-            map<Element *, int> &currentIndexmap,
-    double omega) override {
+                 vector<complex<double>> &b,
+                 map<string, int> &nodeToIndex,
+                 int &voltageIndex,
+                 map<Element *, int> &currentIndexmap,
+                 double omega) override {
         bool hasN1 = !node1->isGroundd();
         bool hasN2 = !node2->isGroundd();
         int vIdx = currentIndexmap[this];
@@ -517,11 +517,11 @@ public:
     void setPhase(double phase_) { this->phase = phase_; }
 
     void stampAC(vector<vector<complex<double>>> &A,
-    vector<complex<double>> &b,
-            map<string, int> &nodeToIndex,
-    int &voltageIndex,
-            map<Element *, int> &currentIndexmap,
-    double omega) override {
+                 vector<complex<double>> &b,
+                 map<string, int> &nodeToIndex,
+                 int &voltageIndex,
+                 map<Element *, int> &currentIndexmap,
+                 double omega) override {
         int i = node1->isGroundd() ? -1 : nodeToIndex[node1->getName()];
         int j = node2->isGroundd() ? -1 : nodeToIndex[node2->getName()];
 
@@ -798,11 +798,11 @@ public:
     }
 
     void stampAC(vector<vector<complex<double>>> &A,
-    vector<complex<double>> &b,
-            map<string, int> &nodeToIndex,
-    int &voltageIndex,
-            map<Element *, int> &currentIndexmap,
-    double omega) override {
+                 vector<complex<double>> &b,
+                 map<string, int> &nodeToIndex,
+                 int &voltageIndex,
+                 map<Element *, int> &currentIndexmap,
+                 double omega) override {
         bool hasN1 = !node1->isGroundd();
         bool hasN2 = !node2->isGroundd();
         int i = hasN1 ? nodeToIndex[node1->getName()] : -1;
@@ -3219,120 +3219,53 @@ public:
 
     }
 
-    vector<pair<double,double>> PhaseSweepData(
-            double freq, double phaseStart, double phaseStop, int steps,
-            const string &kind, const string &target, Circuit *circuit, double &fixedValue)
-    {
-        vector<pair<double,double>> data;
+    vector<pair<double, double>>
+    PhaseSweepData(double frequency, double phaseStart, double phaseStop, int steps,
+                   const string &kind, const string &target, Circuit *c, double &fixedValue) {
+        vector<pair<double, double>> data;
         fixedValue = 0.0;
-        if (!preAnalysisErrs(circuit)) return data;
-        if (kind == "V" && !circuit->getNodeAccess().count(target)) return data;
-        circuit->setType("AC");
-        circuit->clear();
-        ACVoltageSource *source1 = nullptr;
-        ACCurrentSource *source2 = nullptr;
-        for (auto &element: circuit->getElements()) {
-            if (element->getType() == "VAC") {
-                source1 = dynamic_cast<ACVoltageSource *>(element);
+        if (!preAnalysisErrs(c)) return data;
+        if (kind == "V" && !c->getNodeAccess().count(target)) return data;
+
+        const double w = 2 * M_PI * frequency;
+
+        for (int i=0; i<=steps; i++) {
+            double ph= phaseStart + i*(phaseStop - phaseStart)/steps;
+            for (auto *e: c->getElements()) {
+                if (auto *vs = dynamic_cast<ACVoltageSource *>(e))
+                    vs->setPhase(ph * M_PI / 180.0);
+                else if (auto *is = dynamic_cast<ACCurrentSource *>(e))
+                    is->setPhase(ph * M_PI / 180.0);
             }
-        }
-        for (auto &element: circuit->getElements()) {
-            if (element->getType() == "IAC") {
-                source2 = dynamic_cast<ACCurrentSource *>(element);
-            }
-        }
-        if (kind == "V" && !circuit->getNodeAccess().count(target)) {
-            cout << "Error: Node " << target << " not found in the circuit\n";
-            return data;
-        } else if (kind == "I") {
-            bool found = false;
-            for (auto &element: circuit->getElements()) {
-                if (element->getName() == target) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                cout << "Error: Element " << target << " not found in the circuit\n";
-                return data;
-            }
-        }
-        for (int i = 0; i <= steps; i++) {
-            double phase = phaseStart + i * (phaseStop - phaseStart) / steps;
-            circuit->clear();
-            if (source1 != nullptr)
-                source1->setPhase(phase * M_PI / 180.0);
-            else
-                source2->setPhase(phase * M_PI / 180.0);
-            circuit->BuildACMNA(freq * 2 * M_PI);
-            auto A = circuit->getComplexMatrix();
-            auto b = circuit->getComplexRHS();
-            auto x = solveComplexSystem(A, b);
-            cout << fixed << setprecision(3);
-            cout << "phase = " << phase << " degrees : ";
+
+            c->BuildACMNA(w);
+            auto X = solveComplexSystem(c->getComplexMatrix(), c->getComplexRHS());
+
+            complex<double> phasor = 0.0;
             if (kind == "V") {
-                for (int i = 0; i < circuit->ordernodes.size(); i++) {
-                    if (circuit->ordernodes[i]->getName() == target) {
-                        double magnitude = abs(x[i]);
-                        double phase2 = arg(x[i]) * 180.0 / M_PI;
-                        if (fabs(magnitude) < 1e-3)
-                            magnitude = 0.0;
-                        if (fabs(phase) < 1e-3)
-                            phase2 = 0.0;
-                        cout << "|V(" << target << ")| = " << magnitude << " V, "
-                             << "phase = " << phase2 << " degrees";
-                        fixedValue=magnitude;
-                        data.emplace_back(phase, phase2);
-                        break;
-                    }
-                }
-            } else if (kind == "I") {
-                for (auto *e: circuit->getElements()) {
-                    if (e->getName() == target) {
-                        complex<double> current;
-                        if (circuit->currentIndexmap.count(e)) {
-                            current = x[circuit->currentIndexmap[e]];
-                        } else {
-                            string n1 = e->getFirstNode()->getName();
-                            string n2 = e->getSecondNode()->getName();
-                            double value = e->getValue();
-                            complex<double> v1 = {0, 0}, v2 = {0, 0};
+                phasor = X[c->nodetoindex.at(target)];
+            } else { // kind == "I"
+                Element *probe = nullptr;
+                for (auto *e: c->getElements())
+                    if (e->getName() == target) { probe = e; break; }
+                if (!probe) continue;
 
-                            if (circuit->nodetoindex.count(n1))
-                                v1 = x[circuit->nodetoindex.at(n1)];
-                            if (circuit->nodetoindex.count(n2))
-                                v2 = x[circuit->nodetoindex.at(n2)];
-                            if (e->getType() == "Resistor") {
-                                current = (v1 - v2) / value;
-                            } else if (e->getType() == "Capacitor") {
-                                current = (v1 - v2) * complex<double>(0, value * freq * 2 * M_PI);
-                            } else if (e->getType() == "Inductor") {
-                                current = (v1 - v2) / complex<double>(0, freq * 2 * M_PI * value);
-                            } else {
-                                cout << "Cannot compute current for element type: " << e->getCategory() << endl;
-                                return data;
-                            }
-                        }
-
-                        double magnitude = abs(current);
-                        double phase3 = arg(current) * 180.0 / M_PI;
-                        if (phase3 < 0)
-                            phase3 += 180;
-                        else if (phase3 > 0)
-                            phase3 -= 180;
-                        if (fabs(magnitude) < 1e-3)
-                            magnitude = 0.0;
-                        if (fabs(phase3) < 1e-3)
-                            phase3 = 0.0;
-                        cout << "|I(" << target << ")| = " << magnitude << " A, "
-                             << "phase = " << phase3 << " degrees";
-                        data.emplace_back(phase, phase3);
-                        fixedValue=magnitude;
-                        break;
-                    }
+                if (c->currentIndexmap.count(probe))
+                    phasor = X[c->currentIndexmap[probe]];
+                else {
+                    Node *n1 = probe->getFirstNode();
+                    Node *n2 = probe->getSecondNode();
+                    complex<double> v1 = c->nodetoindex.count(n1->getName()) ? X[c->nodetoindex[n1->getName()]] : 0.0;
+                    complex<double> v2 = c->nodetoindex.count(n2->getName()) ? X[c->nodetoindex[n2->getName()]] : 0.0;
+                    double val = probe->getValue();
+                    if (probe->getType() == "Resistor") phasor = (v1 - v2) / val;
+                    else if (probe->getType() == "Capacitor") phasor = (v1 - v2) * complex<double>(0, val * w);
+                    else if (probe->getType() == "Inductor") phasor = (v1 - v2) / complex<double>(0, w * val);
                 }
             }
-            cout << endl;
+
+            if (data.empty()) fixedValue = abs(phasor);
+            data.emplace_back(ph, arg(phasor) * 180.0 / M_PI);
         }
         return data;
     }
@@ -3826,204 +3759,204 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption,
 
 void
 plotMultiDC(const vector<vector<pair<double, double>>> &traces, const vector<string> &labels, const string &sweepSrc) {
-if (traces.empty()) return;
+    if (traces.empty()) return;
 
-if (TTF_Init() == -1) {
-cerr << "TTF init error\n";
-return;
-}
-TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
-constexpr int W = 800, H = 600, M = 60;
+    if (TTF_Init() == -1) {
+        cerr << "TTF init error\n";
+        return;
+    }
+    TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
+    constexpr int W = 800, H = 600, M = 60;
 
-SDL_Window *win = SDL_CreateWindow("DC Sweep – Multiple plots", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                   W, H, SDL_WINDOW_SHOWN);
-SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Window *win = SDL_CreateWindow("DC Sweep – Multiple plots", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                       W, H, SDL_WINDOW_SHOWN);
+    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
 
-DataCursor cursor;
+    DataCursor cursor;
 
-double xmin = traces[0][0].first, xmax = xmin;
-double ymin = traces[0][0].second, ymax = ymin;
-for (const auto &t: traces)
-for (auto p: t) {
-xmin = min(xmin, p.first);
-xmax = max(xmax, p.first);
-ymin = min(ymin, p.second);
-ymax = max(ymax, p.second);
-}
-if (fabs(ymax - ymin) < 1e-12) {
-ymax += 1;
-ymin -= 1;
-}
+    double xmin = traces[0][0].first, xmax = xmin;
+    double ymin = traces[0][0].second, ymax = ymin;
+    for (const auto &t: traces)
+        for (auto p: t) {
+            xmin = min(xmin, p.first);
+            xmax = max(xmax, p.first);
+            ymin = min(ymin, p.second);
+            ymax = max(ymax, p.second);
+        }
+    if (fabs(ymax - ymin) < 1e-12) {
+        ymax += 1;
+        ymin -= 1;
+    }
 
-auto X = [&](double v) { return M + (v - xmin) / (xmax - xmin) * (W - 2 * M); };
-auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
+    auto X = [&](double v) { return M + (v - xmin) / (xmax - xmin) * (W - 2 * M); };
+    auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
 
-const SDL_Color palette[] = {
-        {220, 20,  60,  255},
-        {34,  139, 34,  255},
-        {30,  144, 255, 255},
-        {255, 140, 0,   255},
-        {128, 0,   128, 255},
-        {0,   206, 209, 255},
-        {255, 105, 180, 255}
-};
-const int NCOL = sizeof(palette) / sizeof(palette[0]);
+    const SDL_Color palette[] = {
+            {220, 20,  60,  255},
+            {34,  139, 34,  255},
+            {30,  144, 255, 255},
+            {255, 140, 0,   255},
+            {128, 0,   128, 255},
+            {0,   206, 209, 255},
+            {255, 105, 180, 255}
+    };
+    const int NCOL = sizeof(palette) / sizeof(palette[0]);
 
-bool quit = false;
-SDL_Event ev;
-while (!quit) {
-while (SDL_PollEvent(&ev))
-if (ev.type == SDL_QUIT) quit = true;
+    bool quit = false;
+    SDL_Event ev;
+    while (!quit) {
+        while (SDL_PollEvent(&ev))
+            if (ev.type == SDL_QUIT) quit = true;
 
 
-SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
-SDL_RenderClear(ren);
+        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+        SDL_RenderClear(ren);
 
-SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
-SDL_RenderDrawLine(ren, M, H - M, W - M, H - M);
-SDL_RenderDrawLine(ren, M, H - M, M, M);
+        SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+        SDL_RenderDrawLine(ren, M, H - M, W - M, H - M);
+        SDL_RenderDrawLine(ren, M, H - M, M, M);
 
-drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
-drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
+        drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
+        drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
 
-SDL_Color cBlack{0, 0, 0};
-SDL_Surface *sx = TTF_RenderText_Solid(font, sweepSrc.c_str(), cBlack);
-SDL_Texture *tx = SDL_CreateTextureFromSurface(ren, sx);
-SDL_Rect dstx{W - M - sx->w, H - M + 15, sx->w, sx->h};
-SDL_RenderCopy(ren, tx, nullptr, &dstx);
-SDL_FreeSurface(sx);
-SDL_DestroyTexture(tx);
+        SDL_Color cBlack{0, 0, 0};
+        SDL_Surface *sx = TTF_RenderText_Solid(font, sweepSrc.c_str(), cBlack);
+        SDL_Texture *tx = SDL_CreateTextureFromSurface(ren, sx);
+        SDL_Rect dstx{W - M - sx->w, H - M + 15, sx->w, sx->h};
+        SDL_RenderCopy(ren, tx, nullptr, &dstx);
+        SDL_FreeSurface(sx);
+        SDL_DestroyTexture(tx);
 
-int lx = W - M - 110, ly = M + 5;
-SDL_Rect legendBG{lx - 10, ly - 5, 120, 20 * static_cast<int>(labels.size()) + 5};
-SDL_SetRenderDrawColor(ren, 240, 240, 240, 230);
-SDL_RenderFillRect(ren, &legendBG);
+        int lx = W - M - 110, ly = M + 5;
+        SDL_Rect legendBG{lx - 10, ly - 5, 120, 20 * static_cast<int>(labels.size()) + 5};
+        SDL_SetRenderDrawColor(ren, 240, 240, 240, 230);
+        SDL_RenderFillRect(ren, &legendBG);
 
-for (int k = 0; k < traces.size(); k++) {
-const auto &t = traces[k];
-SDL_Color col = palette[k % NCOL];
-SDL_SetRenderDrawColor(ren, col.r, col.g, col.b, 255);
-for (int i = 1; i < t.size(); i++)
-SDL_RenderDrawLine(ren, int(X(t[i - 1].first)), int(Y(t[i - 1].second)),
-int(X(t[i].first)), int(Y(t[i].second)));
+        for (int k = 0; k < traces.size(); k++) {
+            const auto &t = traces[k];
+            SDL_Color col = palette[k % NCOL];
+            SDL_SetRenderDrawColor(ren, col.r, col.g, col.b, 255);
+            for (int i = 1; i < t.size(); i++)
+                SDL_RenderDrawLine(ren, int(X(t[i - 1].first)), int(Y(t[i - 1].second)),
+                                   int(X(t[i].first)), int(Y(t[i].second)));
 
-SDL_Surface *s = TTF_RenderText_Solid(font, labels[k].c_str(), cBlack);
-SDL_Texture *ts = SDL_CreateTextureFromSurface(ren, s);
-SDL_Rect bar{lx, ly + 20 * int(k) + 4, 15, 6};
-SDL_RenderFillRect(ren, &bar);
-SDL_Rect lbl{lx + 20, ly + 20 * int(k), s->w, s->h};
-SDL_RenderCopy(ren, ts, nullptr, &lbl);
-SDL_FreeSurface(s);
-SDL_DestroyTexture(ts);
-}
-SDL_RenderPresent(ren);
-SDL_Delay(16);
-}
-SDL_DestroyRenderer(ren);
-SDL_DestroyWindow(win);
-TTF_Quit();
+            SDL_Surface *s = TTF_RenderText_Solid(font, labels[k].c_str(), cBlack);
+            SDL_Texture *ts = SDL_CreateTextureFromSurface(ren, s);
+            SDL_Rect bar{lx, ly + 20 * int(k) + 4, 15, 6};
+            SDL_RenderFillRect(ren, &bar);
+            SDL_Rect lbl{lx + 20, ly + 20 * int(k), s->w, s->h};
+            SDL_RenderCopy(ren, ts, nullptr, &lbl);
+            SDL_FreeSurface(s);
+            SDL_DestroyTexture(ts);
+        }
+        SDL_RenderPresent(ren);
+        SDL_Delay(16);
+    }
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+    TTF_Quit();
 }
 
 void plotMultiAC(const vector<vector<pair<double, double>>> &curves, const vector<string> &labels,
-const string &caption) {
-if (curves.empty()) return;
+                 const string &caption) {
+    if (curves.empty()) return;
 
-if (TTF_Init() == -1) {
-cerr << "TTF init error\n";
-return;
-}
-TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
+    if (TTF_Init() == -1) {
+        cerr << "TTF init error\n";
+        return;
+    }
+    TTF_Font *font = TTF_OpenFont(R"(C:\Windows\Fonts\arial.ttf)", 15);
 
-constexpr int W = 800, H = 600, M = 60;
+    constexpr int W = 800, H = 600, M = 60;
 
-SDL_Window *win = SDL_CreateWindow(caption.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                   W, H, SDL_WINDOW_SHOWN);
-SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Window *win = SDL_CreateWindow(caption.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                       W, H, SDL_WINDOW_SHOWN);
+    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
 
-DataCursor cursor;
+    DataCursor cursor;
 
-double xmin = curves[0][0].first, xmax = xmin;
-double ymin = curves[0][0].second, ymax = ymin;
-for (const auto &c: curves)
-for (auto p: c) {
-xmin = min(xmin, p.first);
-xmax = max(xmax, p.first);
-ymin = min(ymin, p.second);
-ymax = max(ymax, p.second);
-}
-if (fabs(ymax - ymin) < 1e-12) {
-ymax += 1;
-ymin -= 1;
-}
+    double xmin = curves[0][0].first, xmax = xmin;
+    double ymin = curves[0][0].second, ymax = ymin;
+    for (const auto &c: curves)
+        for (auto p: c) {
+            xmin = min(xmin, p.first);
+            xmax = max(xmax, p.first);
+            ymin = min(ymin, p.second);
+            ymax = max(ymax, p.second);
+        }
+    if (fabs(ymax - ymin) < 1e-12) {
+        ymax += 1;
+        ymin -= 1;
+    }
 
-auto X = [&](double f) { return M + (f - xmin) / (xmax - xmin) * (W - 2 * M); };
-auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
+    auto X = [&](double f) { return M + (f - xmin) / (xmax - xmin) * (W - 2 * M); };
+    auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
 
-const SDL_Color palette[] = {
-        {30,  144, 255, 255},
-        {220, 20,  60,  255},
-        {34,  139, 34,  255},
-        {255, 140, 0,   255},
-        {128, 0,   128, 255},
-        {0,   206, 209, 255},
-        {255, 105, 180, 255}
-};
-const int NCOL = sizeof(palette) / sizeof(palette[0]);
+    const SDL_Color palette[] = {
+            {30,  144, 255, 255},
+            {220, 20,  60,  255},
+            {34,  139, 34,  255},
+            {255, 140, 0,   255},
+            {128, 0,   128, 255},
+            {0,   206, 209, 255},
+            {255, 105, 180, 255}
+    };
+    const int NCOL = sizeof(palette) / sizeof(palette[0]);
 
-bool quit = false;
-SDL_Event ev;
-while (!quit) {
-while (SDL_PollEvent(&ev))
-if (ev.type == SDL_QUIT) quit = true;
+    bool quit = false;
+    SDL_Event ev;
+    while (!quit) {
+        while (SDL_PollEvent(&ev))
+            if (ev.type == SDL_QUIT) quit = true;
 
-SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
-SDL_RenderClear(ren);
+        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+        SDL_RenderClear(ren);
 
-SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
-SDL_RenderDrawLine(ren, M, H - M, W - M, H - M);
-SDL_RenderDrawLine(ren, M, H - M, M, M);
+        SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+        SDL_RenderDrawLine(ren, M, H - M, W - M, H - M);
+        SDL_RenderDrawLine(ren, M, H - M, M, M);
 
-drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
-drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
+        drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
+        drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
 
-SDL_Color black{0, 0, 0};
-SDL_Surface *sx = TTF_RenderText_Solid(font, "Frequency (Hz)", black);
-SDL_Texture *tx = SDL_CreateTextureFromSurface(ren, sx);
-SDL_Rect dstx{W - M - sx->w, H - M + 15, sx->w, sx->h};
-SDL_RenderCopy(ren, tx, nullptr, &dstx);
-SDL_FreeSurface(sx);
-SDL_DestroyTexture(tx);
+        SDL_Color black{0, 0, 0};
+        SDL_Surface *sx = TTF_RenderText_Solid(font, "Frequency (Hz)", black);
+        SDL_Texture *tx = SDL_CreateTextureFromSurface(ren, sx);
+        SDL_Rect dstx{W - M - sx->w, H - M + 15, sx->w, sx->h};
+        SDL_RenderCopy(ren, tx, nullptr, &dstx);
+        SDL_FreeSurface(sx);
+        SDL_DestroyTexture(tx);
 
-int lx = W - M - 110, ly = M + 5;
-SDL_Rect lg{lx - 10, ly - 5, 120, 20 * static_cast<int>(labels.size()) + 5};
-SDL_SetRenderDrawColor(ren, 240, 240, 240, 230);
-SDL_RenderFillRect(ren, &lg);
+        int lx = W - M - 110, ly = M + 5;
+        SDL_Rect lg{lx - 10, ly - 5, 120, 20 * static_cast<int>(labels.size()) + 5};
+        SDL_SetRenderDrawColor(ren, 240, 240, 240, 230);
+        SDL_RenderFillRect(ren, &lg);
 
-for (int k = 0; k < curves.size(); k++) {
-SDL_Color col = palette[k % NCOL];
-SDL_SetRenderDrawColor(ren, col.r, col.g, col.b, 255);
+        for (int k = 0; k < curves.size(); k++) {
+            SDL_Color col = palette[k % NCOL];
+            SDL_SetRenderDrawColor(ren, col.r, col.g, col.b, 255);
 
-const auto &c = curves[k];
-for (int i = 1; i < c.size(); i++)
-SDL_RenderDrawLine(ren, int(X(c[i - 1].first)), int(Y(c[i - 1].second)),
-int(X(c[i].first)), int(Y(c[i].second)));
+            const auto &c = curves[k];
+            for (int i = 1; i < c.size(); i++)
+                SDL_RenderDrawLine(ren, int(X(c[i - 1].first)), int(Y(c[i - 1].second)),
+                                   int(X(c[i].first)), int(Y(c[i].second)));
 
-SDL_Surface *s = TTF_RenderText_Solid(font, labels[k].c_str(), black);
-SDL_Texture *ts = SDL_CreateTextureFromSurface(ren, s);
-SDL_Rect bar{lx, ly + 20 * int(k) + 4, 15, 6};
-SDL_RenderFillRect(ren, &bar);
-SDL_Rect lbl{lx + 20, ly + 20 * int(k), s->w, s->h};
-SDL_RenderCopy(ren, ts, nullptr, &lbl);
-SDL_FreeSurface(s);
-SDL_DestroyTexture(ts);
-}
-SDL_RenderPresent(ren);
-SDL_Delay(16);
-}
+            SDL_Surface *s = TTF_RenderText_Solid(font, labels[k].c_str(), black);
+            SDL_Texture *ts = SDL_CreateTextureFromSurface(ren, s);
+            SDL_Rect bar{lx, ly + 20 * int(k) + 4, 15, 6};
+            SDL_RenderFillRect(ren, &bar);
+            SDL_Rect lbl{lx + 20, ly + 20 * int(k), s->w, s->h};
+            SDL_RenderCopy(ren, ts, nullptr, &lbl);
+            SDL_FreeSurface(s);
+            SDL_DestroyTexture(ts);
+        }
+        SDL_RenderPresent(ren);
+        SDL_Delay(16);
+    }
 
-SDL_DestroyRenderer(ren);
-SDL_DestroyWindow(win);
-TTF_Quit();
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+    TTF_Quit();
 }
 
 
@@ -5365,19 +5298,58 @@ public:
                 }
                 plotMultiDC(allData, labels, src);
             } else if (regex_match(input, match, phaseSweepPlot)) {
-                double f = stod(match[1].str());
-                double phStart = stod(match[3].str());
-                double phStop = stod(match[4].str());
-                double phStep = stod(match[5].str());
-                string kind = match[6];
-                string probe = match[7];
+                double phStart;
+                double phStop;
+                double phStep;
+                string number = match[1];
+                string unit = match[2];
+                string kind = match[6].str();
+                string target = match[7].str();
+                try {
+                    phStart = stod(match[3].str());
+                    phStop = stod(match[4].str());
+                    phStep = stod(match[5].str());
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value\n";
+                    continue;
+                }
+                double value;
+                try {
+                    value = stod(number);
+                } catch (const invalid_argument &e) {
+                    cout << "Error: Invalid numeric value\n";
+                    continue;
+                }
+                if (!unit.empty()) {
+                    switch (unit[0]) {
+                        case 'G':
+                            value *= 1e9;
+                            break;
+                        case 'M':
+                            value *= 1e6;
+                            break;
+                        case 'k':
+                        case 'K':
+                            value *= 1e3;
+                            break;
+                        case 'm':
+                            value *= 1e-3;
+                            break;
+                        case 'u':
+                            value *= 1e-6;
+                            break;
+                        case 'n':
+                            value *= 1e-9;
+                            break;
+                    }
+                }
+                if (!controller.preAnalysisErrs(circuit))
+                    continue;
 
                 double fixedValue = 0.0;
-                auto data = controller.PhaseSweepData(f, phStart, phStop, (int)phStep,
-                                                      kind, probe, circuit, fixedValue);
-                for (auto d: data)
-                    cout<<d.second<<endl;
-                plotPH(data, "Phase sweep", kind + "(" + probe + ")", fixedValue, kind);
+                auto data = controller.PhaseSweepData(value, phStart, phStop, (int)phStep,
+                                                      kind, target, circuit, fixedValue);
+                plotPH(data, "Phase sweep", kind + "(" + target + ")", fixedValue, kind);
             } else if (regex_match(input, match, multipleACSweepPlot)) {
                 double fStart = stod(match[1]);
                 double fStop = stod(match[2]);

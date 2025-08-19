@@ -2929,7 +2929,7 @@ public:
             c->BuildMNA();
             auto sol = gaussianElimination(c->getMatrix(), c->getRHS());
 
-            for (size_t i = 0; i < c->ordernodes.size(); i++)
+            for (int i = 0; i < c->ordernodes.size(); i++)
                 c->ordernodes[i]->setVoltage(sol[i]);
 
             for (auto *e: c->getElements())
@@ -3312,7 +3312,7 @@ void drawAxisTicks(SDL_Renderer *ren, bool isX, int p0, int p1, int fixed_, doub
         if (font) {
             double val = minVal + t * (maxVal - minVal);
             ostringstream out;
-            out << fixed << setprecision(3) << val;
+            out << fixed << setprecision(1) << val;
             string str = out.str();
             SDL_Surface *surf = TTF_RenderUTF8_Blended(font, str.c_str(), SDL_Color{0, 255, 255});
             SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
@@ -4678,7 +4678,7 @@ private:
     SDL_Window *window_;
     SDL_Renderer *renderer_;
     TTF_Font *font_;
-    Button backButton_;
+    Button backButton;
     vector<pair<double, double>> data;
     string xLabel;
     string yLabel;
@@ -4690,11 +4690,11 @@ public:
               const string &xLabel, const string &yLabel,
               function<void()> onBack)
             : window_(window), renderer_(renderer), font_(font),
-              backButton_({10, 10, 100, 40}, "Back", {200, 50, 50, 255}, {255, 100, 100, 255}, onBack, font),
+              backButton({10, 10, 100, 40}, "Back", {200, 50, 50, 255}, {255, 100, 100, 255}, onBack, font),
               data(data), xLabel(xLabel), yLabel(yLabel) {}
 
     void handleEvent(const SDL_Event &e) {
-        backButton_.handleEvent(e);
+        backButton.handleEvent(e);
     }
 
     void render() {
@@ -4703,9 +4703,9 @@ public:
 
         int width, height;
         SDL_GetWindowSize(window_, &width, &height);
-        int plot_x = 50;
+        int plot_x = 100;
         int plot_y = 100;
-        int plot_w = width - 100;
+        int plot_w = width - 150;
         int plot_h = height - 200;
 
         SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
@@ -4724,7 +4724,7 @@ public:
             }
             if (max_y == min_y) max_y = min_y + 1;
 
-            for (size_t i = 1; i < data.size(); i++) {
+            for (int i = 1; i < data.size(); i++) {
                 double x1 = plot_x + (data[i - 1].first - min_x) / (max_x - min_x) * plot_w;
                 double y1 = plot_y + plot_h - (data[i - 1].second - min_y) / (max_y - min_y) * plot_h;
                 double x2 = plot_x + (data[i].first - min_x) / (max_x - min_x) * plot_w;
@@ -4737,7 +4737,7 @@ public:
         }
 
 
-        backButton_.render(renderer_);
+        backButton.render(renderer_);
         SDL_RenderPresent(renderer_);
     }
 };
@@ -4749,21 +4749,21 @@ private:
     TTF_Font *font_;
     Circuit *circuit;
     Controller &controller_;
-    Button backButton_;
+    Button backButton;
     struct InputField {
         string label;
         string text;
         SDL_Rect rect;
         bool active = false;
     };
-    vector<InputField> inputFields_;
-    Button runButton_;
-    vector<pair<double, double>> sweepResults_;
-    string selectedElement_;
-    string outputType_;
-    string outputNode_;
-    unique_ptr<PlotFrame> plotFrame_;
-    bool inDCSweep_ = false;
+    vector<InputField> inputFields;
+    Button runButton;
+    vector<pair<double, double>> sweepResults;
+    string selectedElement;
+    string outputType;
+    string outputNode;
+    unique_ptr<PlotFrame> plotFrame;
+    bool inDCSweep = false;
 
 
 public:
@@ -4771,8 +4771,8 @@ public:
             Controller &controller, function<void()> onBack)
             : window_(window), renderer_(renderer), font_(font), circuit(circuit),
               controller_(controller),
-              backButton_({10, 10, 100, 40}, "Back", {200, 50, 50, 255}, {255, 100, 100, 255}, onBack, font),
-              runButton_({0, 0, 100, 40}, "Run", {0, 120, 215, 255}, {30, 150, 245, 255},
+              backButton({10, 10, 100, 40}, "Back", {200, 50, 50, 255}, {255, 100, 100, 255}, onBack, font),
+              runButton({0, 0, 100, 40}, "Run", {0, 120, 215, 255}, {30, 150, 245, 255},
                          [this]() { runSweep(); }, font) {
         initializeUI();
     }
@@ -4785,7 +4785,7 @@ public:
         int field_height = 30;
         int spacing = 10;
 
-        inputFields_ = {
+        inputFields = {
                 {"Source", "",    {width / 2 - field_width / 2, y_pos,                 field_width, field_height}, false},
                 {"Start",  "0",   {width / 2 - field_width / 2, y_pos + field_height +
                                                                 spacing,               field_width, field_height}, false},
@@ -4796,24 +4796,24 @@ public:
                 {"Output", "",    {width / 2 - field_width / 2, y_pos + 4 * (field_height +
                                                                              spacing), field_width, field_height}, false}
         };
-        runButton_.rect_ = {width / 2 - 50, y_pos + 5 * (field_height + spacing), 100, 40};
+        runButton.rect_ = {width / 2 - 50, y_pos + 5 * (field_height + spacing), 100, 40};
 
 
     }
 
     void runSweep() {
-        if (inputFields_[0].text.empty() || inputFields_[4].text.empty()) return;
+        if (inputFields[0].text.empty() || inputFields[4].text.empty()) return;
 
-        double start = stod(inputFields_[1].text);
-        double stop = stod(inputFields_[2].text);
-        double step = stod(inputFields_[3].text);
-        outputType_ = inputFields_[4].text.find("V(") == 0 ? "Voltage" : "Current";
-        outputNode_ = inputFields_[4].text;
+        double start = stod(inputFields[1].text);
+        double stop = stod(inputFields[2].text);
+        double step = stod(inputFields[3].text);
+        outputType = inputFields[4].text.find("V(") == 0 ? "Voltage" : "Current";
+        outputNode = inputFields[4].text;
 
-        sweepResults_.clear();
+        sweepResults.clear();
         Element *sweepElement = nullptr;
         for (auto *elem: circuit->getElements()) {
-            if (elem->getName() == inputFields_[0].text) {
+            if (elem->getName() == inputFields[0].text) {
                 sweepElement = elem;
                 break;
             }
@@ -4840,8 +4840,8 @@ public:
                     }
                 }
                 double result = 0;
-                if (outputType_ == "Voltage") {
-                    string nodeName = outputNode_.substr(2, outputNode_.size() - 3);
+                if (outputType == "Voltage") {
+                    string nodeName = outputNode.substr(2, outputNode.size() - 3);
                     for (auto *node: circuit->getNodes()) {
                         if (node->getName() == nodeName) {
                             result = node->getVoltage();
@@ -4850,15 +4850,15 @@ public:
                     }
                 } else {
                     for (auto *elem: circuit->getElements()) {
-                        if (elem->getName() == outputNode_.substr(2, outputNode_.size() - 3)) {
+                        if (elem->getName() == outputNode.substr(2, outputNode.size() - 3)) {
                             result = elem->getCurrent();
                             break;
                         }
                     }
                 }
-                sweepResults_.emplace_back(val, result);
+                sweepResults.emplace_back(val, result);
                 showPlot();
-                inDCSweep_ = false;
+                inDCSweep = false;
             } catch (const exception &e) {
                 cerr << "Error during sweep: " << e.what() << endl;
             }
@@ -4868,40 +4868,40 @@ public:
     }
 
     void handleEvent(const SDL_Event &e) {
-        if (plotFrame_) {
-            plotFrame_->handleEvent(e);
+        if (plotFrame) {
+            plotFrame->handleEvent(e);
             return;
         }
 
-        backButton_.handleEvent(e);
-        runButton_.handleEvent(e);
+        backButton.handleEvent(e);
+        runButton.handleEvent(e);
 
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
             int mx, my;
             SDL_GetMouseState(&mx, &my);
             int newActive = -1;
-            for (int i = 0; i < inputFields_.size(); i++) {
-                auto &f = inputFields_[i];
+            for (int i = 0; i < inputFields.size(); i++) {
+                auto &f = inputFields[i];
                 if (mx >= f.rect.x && mx <= f.rect.x + f.rect.w &&
                     my >= f.rect.y && my <= f.rect.y + f.rect.h) {
                     newActive = i;
                     break;
                 }
             }
-            for (int i = 0; i < inputFields_.size(); i++) {
-                inputFields_[i].active = (i == newActive);
+            for (int i = 0; i < inputFields.size(); i++) {
+                inputFields[i].active = (i == newActive);
             }
             if (newActive != -1) SDL_StartTextInput();
             else SDL_StopTextInput();
         } else if (e.type == SDL_TEXTINPUT) {
-            for (auto &f: inputFields_) {
+            for (auto &f: inputFields) {
                 if (f.active) {
                     f.text += e.text.text;
                     break;
                 }
             }
         } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_BACKSPACE) {
-            for (auto &f: inputFields_) {
+            for (auto &f: inputFields) {
                 if (f.active && !f.text.empty()) {
                     f.text.pop_back();
                     break;
@@ -4913,14 +4913,14 @@ public:
 
     void render() {
         SDL_SetRenderDrawColor(renderer_, 25, 25, 25, 255);
-        if (plotFrame_) {
-            plotFrame_->render();
+        if (plotFrame) {
+            plotFrame->render();
             return;
         }
 
         SDL_RenderClear(renderer_);
 
-        for (const auto &f: inputFields_) {
+        for (const auto &f: inputFields) {
             SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
             SDL_RenderDrawRect(renderer_, &f.rect);
             if (f.active) {
@@ -4945,19 +4945,19 @@ public:
                 SDL_FreeSurface(textSurf);
             }
         }
-        runButton_.render(renderer_);
-        backButton_.render(renderer_);
+        runButton.render(renderer_);
+        backButton.render(renderer_);
         SDL_RenderPresent(renderer_);
     }
 
     void showPlot() {
-        if (!sweepResults_.empty()) {
-            plotFrame_ = make_unique<PlotFrame>(window_, renderer_, font_, sweepResults_,
-                                                inputFields_[0].text,
-                                                outputType_ == "Voltage" ? "Voltage (V)" : "Current (A)",
+        if (!sweepResults.empty()) {
+            plotFrame = make_unique<PlotFrame>(window_, renderer_, font_, sweepResults,
+                                                inputFields[0].text,
+                                                outputType == "Voltage" ? "Voltage (V)" : "Current (A)",
                                                 [this]() {
-                                                    plotFrame_ = nullptr;
-                                                    inDCSweep_ = true;
+                                                    plotFrame = nullptr;
+                                                    inDCSweep = true;
                                                 });
         }
     }
@@ -4970,17 +4970,17 @@ private:
     TTF_Font *font_;
     Circuit *circuit;
     Controller &controller;
-    Button backButton_;
+    Button backButton;
     struct InputField {
         string label;
         string text;
         SDL_Rect rect;
         bool active = false;
     };
-    std::function<void(const std::vector<double> &, const std::vector<double> &)> onPlot_;
-    vector<InputField> inputFields_;
-    Button runButton_;
-    vector<pair<double, double>> sweepResults_;
+    function<void(const vector<double> &, const vector<double> &)> onPlot;
+    vector<InputField> inputFields;
+    Button runButton;
+    vector<pair<double, double>> sweepResults;
     string selectedElement;
     string outputType;
     string outputNode;
@@ -4991,8 +4991,8 @@ public:
             Controller &controller, function<void()> onBack)
             : window_(window), renderer_(renderer), font_(font), circuit(circuit),
               controller(controller),
-              backButton_({10, 10, 100, 40}, "Back", {200, 50, 50, 255}, {255, 100, 100, 255}, onBack, font),
-              runButton_({0, 0, 100, 40}, "Run", {0, 120, 215, 255}, {30, 150, 245, 255},
+              backButton({10, 10, 100, 40}, "Back", {200, 50, 50, 255}, {255, 100, 100, 255}, onBack, font),
+              runButton({0, 0, 100, 40}, "Run", {0, 120, 215, 255}, {30, 150, 245, 255},
                          [this]() { runSweep(); }, font) {
         initializeUI();
     }
@@ -5005,7 +5005,7 @@ public:
         int field_height = 30;
         int spacing = 10;
 
-        inputFields_ = {
+        inputFields = {
                 {"Source", "",     {width / 2 - field_width / 2, y_pos,                 field_width, field_height}, false},
                 {"Start",  "0",    {width / 2 - field_width / 2, y_pos + field_height +
                                                                  spacing,               field_width, field_height}, false},
@@ -5016,7 +5016,7 @@ public:
                 {"Output", "",     {width / 2 - field_width / 2, y_pos + 4 * (field_height +
                                                                               spacing), field_width, field_height}, false}
         };
-        runButton_.rect_ = {width / 2 - 50, y_pos + 5 * (field_height + spacing), 100, 40};
+        runButton.rect_ = {width / 2 - 50, y_pos + 5 * (field_height + spacing), 100, 40};
     }
 
     void handleEvent(const SDL_Event &e) {
@@ -5024,36 +5024,36 @@ public:
             plotFrame->handleEvent(e);
             return;
         }
-        runButton_.handleEvent(e);
-        backButton_.handleEvent(e);
+        runButton.handleEvent(e);
+        backButton.handleEvent(e);
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
             int mx, my;
             SDL_GetMouseState(&mx, &my);
             int newActive = -1;
-            for (size_t i = 0; i < inputFields_.size(); ++i) {
-                SDL_Rect r = inputFields_[i].rect;
+            for (int i = 0; i < inputFields.size(); i++) {
+                SDL_Rect r = inputFields[i].rect;
                 if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
                     newActive = static_cast<int>(i);
                     break;
                 }
             }
             if (newActive != -1) {
-                for (auto &f: inputFields_) f.active = false;
-                inputFields_[newActive].active = true;
+                for (auto &f: inputFields) f.active = false;
+                inputFields[newActive].active = true;
                 SDL_StartTextInput();
             } else {
-                for (auto &f: inputFields_) f.active = false;
+                for (auto &f: inputFields) f.active = false;
                 SDL_StopTextInput();
             }
         } else if (e.type == SDL_TEXTINPUT) {
-            for (auto &f: inputFields_) {
+            for (auto &f: inputFields) {
                 if (f.active) {
                     f.text += e.text.text;
                     break;
                 }
             }
         } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_BACKSPACE) {
-            for (auto &f: inputFields_) {
+            for (auto &f: inputFields) {
                 if (f.active && !f.text.empty()) {
                     f.text.pop_back();
                     break;
@@ -5070,7 +5070,7 @@ public:
         SDL_SetRenderDrawColor(renderer_, 25, 25, 25, 255);
         SDL_RenderClear(renderer_);
         SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
-        for (const auto &f: inputFields_) {
+        for (const auto &f: inputFields) {
             SDL_Surface *label_surf = TTF_RenderText_Blended(font_, f.label.c_str(), {255, 255, 255, 255});
             if (label_surf) {
                 SDL_Texture *label_tex = SDL_CreateTextureFromSurface(renderer_, label_surf);
@@ -5095,87 +5095,360 @@ public:
                 SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
             }
         }
-        runButton_.render(renderer_);
-        backButton_.render(renderer_);
+        runButton.render(renderer_);
+        backButton.render(renderer_);
+        SDL_RenderPresent(renderer_);
+    }
+
+
+    void showPlot() {
+        if (!sweepResults.empty()) {
+            plotFrame = make_unique<PlotFrame>(window_, renderer_, font_, sweepResults,
+                                                inputFields[0].text,
+                                               outputType == "Voltage" ? "Voltage (V)" : "Current (A)",
+                                                [this]() {
+                                                    plotFrame = nullptr;
+                                                    inACSweep = true;
+                                                });
+        }
     }
 
     void runSweep() {
-        double start = std::atof(inputFields_[0].text.c_str());
-        double end = std::atof(inputFields_[1].text.c_str());
-        int points = std::atoi(inputFields_[2].text.c_str());
-        std::string plotExpr = inputFields_[3].text;
+        if (inputFields[0].text.empty() || inputFields[4].text.empty()) return;
 
-        bool isVoltage = (plotExpr.substr(0, 2) == "V(" && plotExpr.back() == ')');
-        bool isCurrent = (plotExpr.substr(0, 2) == "I(" && plotExpr.back() == ')');
-        if (!isVoltage && !isCurrent) return;
+        double start_freq = stod(inputFields[1].text);
+        double stop_freq = stod(inputFields[2].text);
+        int num_points = stoi(inputFields[3].text);
+        outputType = inputFields[4].text.find("V(") == 0 ? "Voltage" : "Current";
+        outputNode = inputFields[4].text;
 
-        std::string target = plotExpr.substr(2, plotExpr.size() - 3);
+        sweepResults.clear();
+        Element *sweepElement = nullptr;
+        for (auto *elem : circuit->getElements()) {
+            if (elem->getName() == inputFields[0].text) {
+                sweepElement = elem;
+                break;
+            }
+        }
+        if (!sweepElement) return;
 
-        std::vector<double> freqs(points);
-        std::vector<double> mags(points);
+        double originalValue = sweepElement->getValue();
+        circuit->setType("AC");
 
-        double step = (points > 1) ? (end - start) / (points - 1) : 0.0;
-        for (int i = 0; i < points; ++i) {
-            double freq = start + i * step;
+        vector<double> freqs(num_points);
+        double step = (stop_freq - start_freq) / (num_points - 1);
+        for (int i = 0; i < num_points; ++i) {
+            freqs[i] = start_freq + i * step;
+        }
+
+        for (double freq : freqs) {
             double omega = 2 * M_PI * freq;
             circuit->BuildACMNA(omega);
             auto A = circuit->getComplexMatrix();
             auto b = circuit->getComplexRHS();
-            auto x = solveComplexSystem(A, b);
-
-            std::complex<double> value(0.0, 0.0);
-
-            if (isVoltage) {
-                auto it = circuit->nodetoindex.find(target);
-                if (it != circuit->nodetoindex.end()) {
-                    value = x[it->second];
-                }
-            } else if (isCurrent) {
-                Element *elem = nullptr;
-                for (auto *e: circuit->getElements()) {
-                    if (e->getName() == target) {
-                        elem = e;
-                        break;
+            try {
+                auto x = solveComplexSystem(A, b);
+                for (auto *node : circuit->getNodes()) {
+                    if (!node->isGroundd() && circuit->nodetoindex.count(node->getName())) {
+                        complex<double> voltage = x[circuit->nodetoindex[node->getName()]];
+                        node->setVoltage(abs(voltage) < 1e-5 ? 0.0 : abs(voltage));
                     }
                 }
-                if (!elem) continue;
-
-                Node *n1 = elem->getFirstNode();
-                Node *n2 = elem->getSecondNode();
-                std::complex<double> v1 = n1->isGroundd() ? 0.0 : x[circuit->nodetoindex[n1->getName()]];
-                std::complex<double> v2 = n2->isGroundd() ? 0.0 : x[circuit->nodetoindex[n2->getName()]];
-                std::complex<double> dv = v1 - v2;
-
-                std::string t = elem->getType();
-                if (t == "Resistor") {
-                    value = dv / elem->getValue();
-                } else if (t == "Capacitor") {
-                    value = std::complex<double>(0.0, omega * elem->getValue()) * dv;
-                } else if (t == "Inductor") {
-                    auto it = circuit->currentIndexmap.find(elem);
-                    if (it != circuit->currentIndexmap.end()) {
-                        value = x[it->second];
-                    }
-                } else if (t.find("Voltage Source") != std::string::npos || t == "VCVS" || t == "CCVS") {
-                    auto it = circuit->currentIndexmap.find(elem);
-                    if (it != circuit->currentIndexmap.end()) {
-                        value = x[it->second];
-                    }
-                } else if (t == "IAC") {
-                    auto *acsrc = dynamic_cast<ACCurrentSource *>(elem);
-                    if (acsrc) {
-                        value = std::polar(acsrc->getValue(), acsrc->phase);
+                for (auto *elem : circuit->getElements()) {
+                    if (circuit->currentIndexmap.count(elem)) {
+                        complex<double> current = x[circuit->currentIndexmap[elem]];
+                        elem->setCurrent(abs(current) < 1e-5 ? 0.0 : abs(current));
                     }
                 }
+                double result = 0;
+                if (outputType == "Voltage") {
+                    string nodeName = outputNode.substr(2, outputNode.size() - 3);
+                    for (auto *node : circuit->getNodes()) {
+                        if (node->getName() == nodeName) {
+                            result = node->getVoltage();
+                            break;
+                        }
+                    }
+                } else {
+                    string elemName = outputNode.substr(2, outputNode.size() - 3);
+                    for (auto *elem : circuit->getElements()) {
+                        if (elem->getName() == elemName) {
+                            if (elem->getCategory() == "Voltage Source" ||
+                                elem->getCategory() == "Controlled Voltage Source" ||
+                                elem->getCategory() == "Inductor") {
+                                result = elem->getCurrent();
+                            } else {
+                                Node *n1 = elem->getFirstNode();
+                                Node *n2 = elem->getSecondNode();
+                                complex<double> v1 = n1->isGroundd() ? complex<double>(0.0, 0.0) :
+                                                     x[circuit->nodetoindex[n1->getName()]];
+                                complex<double> v2 = n2->isGroundd() ? complex<double>(0.0, 0.0) :
+                                                     x[circuit->nodetoindex[n2->getName()]];
+                                complex<double> dv = v1 - v2;
+                                complex<double> Z(0.0, 0.0);
+                                string type = elem->getType();
+                                if (type == "Resistor") {
+                                    Z = complex<double>(elem->getValue(), 0.0);
+                                } else if (type == "Capacitor") {
+                                    Z = complex<double>(0.0, -1.0 / (omega * elem->getValue()));
+                                } else if (type == "Inductor") {
+                                    Z = complex<double>(0.0, omega * elem->getValue());
+                                }
+                                if (abs(Z) > 1e-12) {
+                                    result = abs(dv / Z);
+                                    result = result < 1e-5 ? 0.0 : result;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                sweepResults.emplace_back(freq, result);
+            } catch (const exception &e) {
+                cerr << "Error during AC sweep: " << e.what() << endl;
             }
-
-            freqs[i] = freq;
-            mags[i] = std::abs(value);
         }
 
-        onPlot_(freqs, mags);
+        sweepElement->setValue(originalValue);
+        showPlot();
+        inACSweep = false;
+    }
+};
+
+class Transient{
+private:
+    SDL_Window *window_;
+    SDL_Renderer *renderer_;
+    TTF_Font *font_;
+    Circuit *circuit;
+    Controller &controller;
+    Button backButton;
+    struct InputField {
+        string label;
+        string text;
+        SDL_Rect rect;
+        bool active = false;
+    };
+    function<void(const vector<double> &, const vector<double> &)> onPlot;
+    vector<InputField> inputFields;
+    Button runButton;
+    vector<pair<double, double>> Results;
+    string selectedElement;
+    string outputType;
+    string outputNode;
+    unique_ptr<PlotFrame> plotFrame;
+    bool inTran = false;
+public:
+    Transient(SDL_Window *window, SDL_Renderer *renderer, TTF_Font *font, Circuit *circuit,
+            Controller &controller, function<void()> onBack)
+    : window_(window), renderer_(renderer), font_(font), circuit(circuit),
+    controller(controller),
+    backButton({10, 10, 100, 40}, "Back", {200, 50, 50, 255}, {255, 100, 100, 255}, onBack, font),
+    runButton({0, 0, 100, 40}, "Run", {0, 120, 215, 255}, {30, 150, 245, 255},
+    [this]() { runTran(); }, font) {
+        initializeUI();
     }
 
+    void initializeUI() {
+        int width, height;
+        SDL_GetWindowSize(window_, &width, &height);
+        int y_pos = 100;
+        int field_width = 200;
+        int field_height = 30;
+        int spacing = 10;
+
+        inputFields = {
+                {"Start", "0",     {width / 2 - field_width / 2, y_pos,                 field_width, field_height}, false},
+                {"End",  "10",    {width / 2 - field_width / 2, y_pos + field_height +
+                                                                 spacing,               field_width, field_height}, false},
+                {"Steps",   "0.1", {width / 2 - field_width / 2, y_pos + 2 * (field_height +
+                                                                              spacing), field_width, field_height}, false},
+                {"Output", "",     {width / 2 - field_width / 2, y_pos + 3 * (field_height +
+                                                                              spacing), field_width, field_height}, false}
+
+        };
+        runButton.rect_ = {width / 2 - 50, y_pos + 5 * (field_height + spacing), 100, 40};
+    }
+    void handleEvent(const SDL_Event &e) {
+        if (plotFrame) {
+            plotFrame->handleEvent(e);
+            return;
+        }
+        runButton.handleEvent(e);
+        backButton.handleEvent(e);
+        if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+            int mx, my;
+            SDL_GetMouseState(&mx, &my);
+            int newActive = -1;
+            for (int i = 0; i < inputFields.size(); i++) {
+                SDL_Rect r = inputFields[i].rect;
+                if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+                    newActive = static_cast<int>(i);
+                    break;
+                }
+            }
+            if (newActive != -1) {
+                for (auto &f: inputFields) f.active = false;
+                inputFields[newActive].active = true;
+                SDL_StartTextInput();
+            } else {
+                for (auto &f: inputFields) f.active = false;
+                SDL_StopTextInput();
+            }
+        } else if (e.type == SDL_TEXTINPUT) {
+            for (auto &f: inputFields) {
+                if (f.active) {
+                    f.text += e.text.text;
+                    break;
+                }
+            }
+        } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_BACKSPACE) {
+            for (auto &f: inputFields) {
+                if (f.active && !f.text.empty()) {
+                    f.text.pop_back();
+                    break;
+                }
+            }
+        }
+    }
+
+    void render() {
+        if (plotFrame) {
+            plotFrame->render();
+            return;
+        }
+        SDL_SetRenderDrawColor(renderer_, 25, 25, 25, 255);
+        SDL_RenderClear(renderer_);
+        SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
+        for (const auto &f: inputFields) {
+            SDL_Surface *label_surf = TTF_RenderText_Blended(font_, f.label.c_str(), {255, 255, 255, 255});
+            if (label_surf) {
+                SDL_Texture *label_tex = SDL_CreateTextureFromSurface(renderer_, label_surf);
+                SDL_Rect label_dst = {f.rect.x - label_surf->w - 10, f.rect.y + (f.rect.h - label_surf->h) / 2,
+                                      label_surf->w, label_surf->h};
+                SDL_RenderCopy(renderer_, label_tex, nullptr, &label_dst);
+                SDL_DestroyTexture(label_tex);
+                SDL_FreeSurface(label_surf);
+            }
+            SDL_RenderDrawRect(renderer_, &f.rect);
+            SDL_Surface *text_surf = TTF_RenderText_Blended(font_, f.text.c_str(), {255, 255, 255, 255});
+            if (text_surf) {
+                SDL_Texture *text_tex = SDL_CreateTextureFromSurface(renderer_, text_surf);
+                SDL_Rect text_dst = {f.rect.x + 5, f.rect.y + 5, text_surf->w, text_surf->h};
+                SDL_RenderCopy(renderer_, text_tex, nullptr, &text_dst);
+                SDL_DestroyTexture(text_tex);
+                SDL_FreeSurface(text_surf);
+            }
+            if (f.active) {
+                SDL_SetRenderDrawColor(renderer_, 0, 255, 0, 255);
+                SDL_RenderDrawRect(renderer_, &f.rect);
+                SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
+            }
+        }
+        runButton.render(renderer_);
+        backButton.render(renderer_);
+        SDL_RenderPresent(renderer_);
+    }
+
+    void showPlot() {
+        if (!Results.empty()) {
+            plotFrame = make_unique<PlotFrame>(
+                    window_, renderer_, font_,
+                    Results,
+                    "Time (s)",
+                    (outputType == "Voltage" ? "Voltage (V)" : "Current (A)"),
+                    [this]() {
+                        plotFrame = nullptr;
+                        inTran = true;
+                    }
+            );
+        }
+    }
+
+    void runTran() {
+        if (inputFields[0].text.empty() || inputFields[1].text.empty() || inputFields[2].text.empty() || inputFields[3].text.empty() || inputFields[4].text.empty()) {
+            return;
+        }
+
+        double tstart = stod(inputFields[0].text);
+        double tend = stod(inputFields[1].text);
+        double tstep = stod(inputFields[2].text);
+        outputType = inputFields[3].text.find("V(") == 0 ? "Voltage" : "Current";
+        outputNode = inputFields[3].text;
+
+        double points = (tend - tstart)/tstep;
+
+        if (tstep <= 0 || tend <= tstart || points <= 0) {
+            return;
+        }
+
+        tstep = min(tstep, (tend - tstart) / points);
+
+        Results.clear();
+        circuit->setType("TRAN");
+        circuit->setDeltat(tstep);
+        circuit->clear();
+
+        try {
+            for (double t = tstart; t <= tend; t += tstep) {
+                for (auto *elem : circuit->getElements()) {
+                    elem->updateTime(t);
+                }
+
+                circuit->BuildMNA();
+                auto A = circuit->getMatrix();
+                auto b = circuit->getRHS();
+                auto x = gaussianElimination(A, b);
+
+                for (auto *node : circuit->getNodes()) {
+                    if (!node->isGroundd() && circuit->nodetoindex.count(node->getName())) {
+                        node->setVoltage(clean(x[circuit->nodetoindex[node->getName()]]));
+                    }
+                }
+
+                for (auto *elem : circuit->getElements()) {
+                    if (circuit->currentIndexmap.count(elem)) {
+                        elem->setCurrent(clean(x[circuit->currentIndexmap[elem]]));
+                    }
+                }
+
+                for (auto *elem : circuit->getElements()) {
+                    if (auto *cap = dynamic_cast<Capacitor*>(elem)) {
+                        double v = cap->getFirstNode()->getVoltage() - cap->getSecondNode()->getVoltage();
+                        cap->updateVoltage(v);
+                    } else if (auto *ind = dynamic_cast<Inductor*>(elem)) {
+                        ind->updateCurrent(ind->getCurrent());
+                    }
+                }
+
+                double result = 0;
+                if (outputType == "Voltage") {
+                    string nodeName = outputNode.substr(2, outputNode.size() - 3);
+                    for (auto *node : circuit->getNodes()) {
+                        if (node->getName() == nodeName) {
+                            result = node->getVoltage();
+                            break;
+                        }
+                    }
+                } else {
+                    string elemName = outputNode.substr(2, outputNode.size() - 3);
+                    for (auto *elem : circuit->getElements()) {
+                        if (elem->getName() == elemName) {
+                            result = elem->getCurrent();
+                            break;
+                        }
+                    }
+                }
+
+                Results.emplace_back(t, result);
+            }
+
+            showPlot();
+            inTran = false;
+        } catch (const exception &e) {
+            cerr << "Error during transient analysis: " << e.what() << endl;
+        }
+    }
 };
 
 class SchematicEditor {
@@ -5253,13 +5526,16 @@ private:
 
     bool &in_schematic_;
     unique_ptr<DCSweep> dcSweep_;
-    bool inDCSweep_ = false;
+    bool inDCSweep = false;
 
-    unique_ptr<PlotFrame> plotFrame_;
-    bool inPlot_ = false;
+    unique_ptr<PlotFrame> plotFrame;
+    bool inPlot = false;
 
-    bool inACSweep_ = false;
-    std::unique_ptr<ACSweep> acSweep_;
+    bool inACSweep = false;
+    unique_ptr<ACSweep> acSweep_;
+
+    bool inTransient = false;
+    unique_ptr<Transient> transient_;
 
     void saveToFile(const string &filename) {
         ofstream ofs(filename);
@@ -5289,7 +5565,7 @@ public:
                     bool &in_schematic)
             : window_(window), renderer_(renderer), font_(font), in_schematic_(in_schematic),
               backButton({10, 10, 100, 40}, "Back", {200, 50, 50, 255}, {255, 100, 100, 255}, onBack, font),
-              plotFrame_(nullptr) {
+              plotFrame(nullptr) {
         SDL_Color btnNormal = {50, 50, 50, 255};
         SDL_Color btnHover = {80, 80, 80, 255};
         int btnWidth = 80;
@@ -5426,22 +5702,29 @@ public:
                 btn.onClick_ = [this]() {
                     if (circuit) delete circuit;
                     circuit = buildCircuit(currentPosToNode);
-                    inDCSweep_ = true;
+                    inDCSweep = true;
                     dcSweep_ = make_unique<DCSweep>(window_, renderer_, font_, circuit, controller,
-                                                    [this]() { inDCSweep_ = false; });
+                                                    [this]() { inDCSweep = false; });
                 };
             }
             if (btn.txt_ == "AC") {
                 btn.onClick_ = [this]() {
                     if (circuit) delete circuit;
                     circuit = buildCircuit(currentPosToNode);
-                    inACSweep_ = true;
+                    inACSweep = true;
                     acSweep_ = make_unique<ACSweep>(window_, renderer_, font_, circuit, controller,
-                                                    [this]() { inACSweep_ = false; });
+                                                    [this]() { inACSweep = false; });
                 };
             }
-
-
+            if (btn.txt_ == "TRAN") {
+                btn.onClick_ = [this]() {
+                    if (circuit) delete circuit;
+                    circuit = buildCircuit(currentPosToNode);
+                    inTransient = true;
+                    transient_ = make_unique<Transient>(window_, renderer_, font_, circuit, controller,
+                                                        [this]() { inTransient = false; });
+                };
+            }
         }
     }
 
@@ -5729,15 +6012,19 @@ public:
             }
         }
 
-        if (inDCSweep_) {
+        if (inDCSweep) {
             dcSweep_->handleEvent(e);
         }
-        if (inACSweep_) {
+        if (inACSweep) {
             acSweep_->handleEvent(e);
         }
 
-        if (inPlot_) {
-            plotFrame_->handleEvent(e);
+        if (inTransient) {
+            transient_->handleEvent(e);
+        }
+
+        if (inPlot) {
+            plotFrame->handleEvent(e);
         }
 
         if (saveMode) {
@@ -6047,16 +6334,20 @@ public:
             }
         }
 
-        if (inDCSweep_) {
+        if (inDCSweep) {
             dcSweep_->render();
             return;
         }
-        if (inACSweep_) {
+        if (inACSweep) {
             acSweep_->render();
             return;
         }
-        if (inPlot_) {
-            plotFrame_->render();
+        if (inTransient) {
+            transient_->render();
+            return;
+        }
+        if (inPlot) {
+            plotFrame->render();
         }
 
 

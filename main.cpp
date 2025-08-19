@@ -455,7 +455,6 @@ public:
 
     double getValue() override { return amplitude; }
     void setValue(double v) override { amplitude = v; value = v; }
-    void setValue(double v) override { amplitude = v; value = v; }
 
     void setPhase(double phase_) { this->phase = phase_; }
 

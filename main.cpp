@@ -5137,7 +5137,7 @@ public:
 
         vector<double> freqs(num_points);
         double step = (stop_freq - start_freq) / (num_points - 1);
-        for (int i = 0; i < num_points; ++i) {
+        for (int i = 0; i < num_points; i++) {
             freqs[i] = start_freq + i * step;
         }
 
@@ -5537,6 +5537,10 @@ private:
     bool inTransient = false;
     unique_ptr<Transient> transient_;
 
+    bool renameNodeMode = false;
+    vector<InputField> renameFields;
+    Button renameOkButton = Button({0, 0, 0, 0}, "", {0, 0, 0, 0}, {0, 0, 0, 0}, []() {}, nullptr);
+
     void saveToFile(const string &filename) {
         ofstream ofs(filename);
         if (!ofs) {
@@ -5692,6 +5696,28 @@ public:
             controller.list(circuit);
             controller.showCircuitDetails(circuit);
         }, font_);
+        y_pos += btnHeight + btnSpacing;
+
+        leftButtons.emplace_back(SDL_Rect{0, y_pos - 400, btnWidth, btnHeight}, "Re Node", btnNormal, btnHover,
+                                 [this]() {
+                                     renameNodeMode = true;
+                                     renameFields = {
+                                             {"Old Name", "", {0, 0, 0, 0}, true},
+                                             {"New Name", "", {0, 0, 0, 0}, true}
+                                     };
+                                     SDL_Color btnNormal = {50, 50, 50, 255};
+                                     SDL_Color btnHover = {80, 80, 80, 255};
+                                     renameOkButton = Button({0, 0, 0, 0}, "OK", btnNormal, btnHover, [this]() {
+                                         string old = renameFields[0].text;
+                                         string new_ = renameFields[1].text;
+                                         string err;
+                                         circuit->renameNode(old, new_, err);
+                                         renameNodeMode = false;
+                                         for (auto& f : renameFields) f.active = false;
+                                         SDL_StopTextInput();
+                                     }, font_);
+                                     SDL_StartTextInput();
+                                 }, font_);
 
 
         if (circuit) delete circuit;
@@ -6038,6 +6064,43 @@ public:
             }
         }
 
+        if (renameNodeMode) {
+            if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+                int mx, my;
+                SDL_GetMouseState(&mx, &my);
+                int newActive = -1;
+                for (int i = 0; i < renameFields.size(); i++) {
+                    auto& f = renameFields[i];
+                    if (mx >= f.rect.x && mx <= f.rect.x + f.rect.w && my >= f.rect.y && my <= f.rect.y + f.rect.h) {
+                        newActive = i;
+                        break;
+                    }
+                }
+                if (newActive != -1) {
+                    for (int i = 0; i < renameFields.size(); i++) renameFields[i].active = (i == newActive);
+                    SDL_StartTextInput();
+                } else {
+                    for (auto& f : renameFields) f.active = false;
+                    SDL_StopTextInput();
+                }
+            } else if (e.type == SDL_TEXTINPUT) {
+                for (auto& f : renameFields) {
+                    if (f.active) {
+                        f.text += e.text.text;
+                        break;
+                    }
+                }
+            } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_BACKSPACE) {
+                for (auto& f : renameFields) {
+                    if (f.active && !f.text.empty()) {
+                        f.text.pop_back();
+                        break;
+                    }
+                }
+            }
+            renameOkButton.handleEvent(e);
+        }
+
         if (e.type == SDL_KEYDOWN) {
             SDL_Keymod mod = SDL_GetModState();
 
@@ -6146,7 +6209,7 @@ public:
             if (n1 == n2) continue;
 
             double val = elem.customValue;
-            string elName = elem.customName.empty() ? (elem.type + "_" + to_string(rand() % 1000)) : elem.customName;
+            string elName = elem.customName.empty() ? (elem.type + to_string(rand() % 1000)) : elem.customName;
 
             Element *el = nullptr;
             if (elem.type == "R") {
@@ -6386,6 +6449,59 @@ public:
                 }
             }
             editOkButton.render(renderer_);
+        }
+
+        if (renameNodeMode) {
+            int width, height;
+            SDL_GetWindowSize(window_, &width, &height);
+            int numFields = renameFields.size();
+            int fieldHeight = 40;
+            int popupHeight = numFields * fieldHeight + 80;
+            SDL_Rect popup = {width / 2 - 200, height / 2 - popupHeight / 2, 400, popupHeight};
+            SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
+            SDL_RenderFillRect(renderer_, &popup);
+            SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
+            SDL_RenderDrawRect(renderer_, &popup);
+
+            SDL_Surface* titleSurf = TTF_RenderText_Blended(font_, "Rename Node", {255, 255, 255, 255});
+            if (titleSurf) {
+                SDL_Texture* titleTex = SDL_CreateTextureFromSurface(renderer_, titleSurf);
+                SDL_Rect titleDst = {popup.x + (popup.w - titleSurf->w) / 2, popup.y + 10, titleSurf->w, titleSurf->h};
+                SDL_RenderCopy(renderer_, titleTex, nullptr, &titleDst);
+                SDL_DestroyTexture(titleTex);
+                SDL_FreeSurface(titleSurf);
+            }
+
+            int y_offset = popup.y + 50;
+            for (int i = 0; i < numFields; i++) {
+                auto& f = renameFields[i];
+                f.rect = {popup.x + 150, y_offset, 200, 30};
+                SDL_Surface* labelSurf = TTF_RenderText_Blended(font_, f.label.c_str(), {255, 255, 255, 255});
+                if (labelSurf) {
+                    SDL_Texture* labelTex = SDL_CreateTextureFromSurface(renderer_, labelSurf);
+                    SDL_Rect labelDst = {popup.x + 10, y_offset + 5, labelSurf->w, labelSurf->h};
+                    SDL_RenderCopy(renderer_, labelTex, nullptr, &labelDst);
+                    SDL_DestroyTexture(labelTex);
+                    SDL_FreeSurface(labelSurf);
+                }
+                SDL_RenderDrawRect(renderer_, &f.rect);
+                if (f.active) {
+                    SDL_SetRenderDrawColor(renderer_, 0, 255, 0, 255);
+                    SDL_RenderDrawRect(renderer_, &f.rect);
+                    SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
+                }
+                SDL_Surface* textSurf = TTF_RenderText_Blended(font_, f.text.c_str(), {255, 255, 255, 255});
+                if (textSurf) {
+                    SDL_Texture* textTex = SDL_CreateTextureFromSurface(renderer_, textSurf);
+                    SDL_Rect textDst = {f.rect.x + 5, f.rect.y + 5, textSurf->w, textSurf->h};
+                    SDL_RenderCopy(renderer_, textTex, nullptr, &textDst);
+                    SDL_DestroyTexture(textTex);
+                    SDL_FreeSurface(textSurf);
+                }
+                y_offset += fieldHeight;
+            }
+            renameOkButton.rect_ = {popup.x + (popup.w - 100) / 2, y_offset + 10, 100, 30};
+            renameOkButton.render(renderer_);
         }
 
         if (groundSelectMode) {

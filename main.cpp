@@ -107,7 +107,7 @@ private:
 public:
     Node(string name_) : name(name_), isGround(false) {}
 
-    vector<Element *> getConnectedElements() { return connected_elements; }
+    vector<Element *>& getConnectedElements() { return connected_elements; }
 
     string getName() { return name; }
 
@@ -169,6 +169,10 @@ public:
     Node *getFirstNode() { return node1; }
 
     Node *getSecondNode() { return node2; }
+
+    void setFirstNode(Node *n) {node1 = n; }
+
+    void setSecondNode(Node *n) {node2 = n; }
 
     virtual double getCurrent() { return current; }
 
@@ -559,7 +563,7 @@ public:
 
     vector<Element *> &getElements() { return elements; }
 
-    map<string, Node *> getNodeAccess() { return node_access; }
+    map<string, Node *>& getNodeAccess() { return node_access; }
 
     map<string, int> nodetoindex;
     vector<Node *> ordernodes;
@@ -615,8 +619,21 @@ public:
             return false;
         }
         if (node_access.find(new_name) != node_access.end()) {
-            err = "ERROR: Node name " + new_name + " already exists\n";
-            return false;
+            Node* oldNode = node_access[old_name];
+            Node* newNode = node_access[new_name];
+
+            for (auto e : oldNode->getConnectedElements()) {
+                newNode->addConnectedElement(e);
+                if (e->getFirstNode()->getName() == old_name)
+                    e->setFirstNode(newNode);
+                else if (e->getSecondNode()->getName() == old_name)
+                    e->setSecondNode(newNode);
+            }
+
+            node_access.erase(old_name);
+            delete oldNode;
+            err = "SUCCESS: Node " + old_name + " merged into " + new_name + "\n";
+            return true;
         }
         Node *node = node_access[old_name];
         node->setName(new_name);
@@ -4857,13 +4874,13 @@ public:
                     }
                 }
                 sweepResults.emplace_back(val, result);
-                showPlot();
-                inDCSweep = false;
             } catch (const exception &e) {
                 cerr << "Error during sweep: " << e.what() << endl;
             }
         }
         sweepElement->setValue(originalValue);
+        showPlot();
+        inDCSweep = false;
 
     }
 
@@ -5487,7 +5504,7 @@ private:
     bool groundSelectMode = false;
     vector<string> nodeNames;
     vector<SDL_Rect> nodeRects;
-    map<pair<int, int>, Node *> currentPosToNode;
+    map<pair<int, int>, string > currentPosToNode;
 
     pair<int, int> previewEnd = {-1, -1};
 
@@ -5707,11 +5724,31 @@ public:
                                      };
                                      SDL_Color btnNormal = {50, 50, 50, 255};
                                      SDL_Color btnHover = {80, 80, 80, 255};
+                                     if (circuit) delete circuit;
+                                     circuit = buildCircuit(currentPosToNode);
+                                     nodeNames.clear();
+                                     auto nodes = circuit->getNodes();
+                                     for (auto n: nodes) {
+                                         nodeNames.push_back(n->getName());
+                                     }
+                                     sort(nodeNames.begin(), nodeNames.end());
                                      renameOkButton = Button({0, 0, 0, 0}, "OK", btnNormal, btnHover, [this]() {
                                          string old = renameFields[0].text;
                                          string new_ = renameFields[1].text;
                                          string err;
+                                         for (auto &p : currentPosToNode) {
+                                         if (p.second == old) {
+                                             p.second= new_;
+                                             cout<<"YEES\n";
+                                         }
+                                     }
+                                         for (auto &p : currentPosToNode) {
+                                             if (p.second == new_) {
+                                                 cout<<p.first.first<<"  "<<p.first.second<<endl;
+                                             }
+                                         }
                                          circuit->renameNode(old, new_, err);
+                                         controller.showCircuitDetails(circuit);
                                          renameNodeMode = false;
                                          for (auto& f : renameFields) f.active = false;
                                          SDL_StopTextInput();
@@ -6013,24 +6050,36 @@ public:
             if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
                 int mx, my;
                 SDL_GetMouseState(&mx, &my);
-                for (int i = 0; i < nodeRects.size(); i++) {
-                    SDL_Rect r = nodeRects[i];
+
+                for (size_t i = 0; i < nodeRects.size(); ++i) {
+                    const SDL_Rect& r = nodeRects[i];
                     if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
-                        string selectedName = nodeNames[i];
-                        Node *selectedNode = circuit->getNodeAccess()[selectedName];
-                        selectedNode->setGround();
+                        const std::string& selectedName = nodeNames[i];
+
+                        // ست کردن گراند بر اساس نام
                         circuit->setGround(selectedName);
-                        int minY_val = INT_MAX;
-                        pair<int, int> selectedPos = {-1, -1};
-                        for (const auto &entry: currentPosToNode) {
-                            if (entry.second == selectedNode && entry.first.second < minY_val) {
-                                minY_val = entry.first.second;
+
+                        // (اختیاری) اگر نود در ایندکس بود، فلگ ground خود نود را هم ست کن
+                        auto& idx = circuit->getNodeAccess();
+                        auto it = idx.find(selectedName);
+                        if (it != idx.end() && it->second) {
+                            it->second->setGround();
+                        }
+
+                        // پیدا کردن یک پوزیشن نماینده برای نمایش GND روی بورد
+                        int minY = INT_MAX;
+                        std::pair<int,int> selectedPos = {-1, -1};
+                        for (const auto& entry : currentPosToNode) {
+                            // entry.second الان "نام نود" است
+                            if (entry.second == selectedName && entry.first.second < minY) {
+                                minY = entry.first.second;
                                 selectedPos = entry.first;
                             }
                         }
                         if (selectedPos.first != -1) {
                             groundPos = selectedPos;
                         }
+
                         groundSelectMode = false;
                         break;
                     }
@@ -6130,7 +6179,7 @@ public:
 
     }
 
-    Circuit *buildCircuit(map<pair<int, int>, Node *> &outPosToNode) {
+    Circuit *buildCircuit(map<pair<int, int>, string> &outPosToNodeName) {
         Circuit *newCircuit = new Circuit();
 
         using Pos = pair<int, int>;
@@ -6143,59 +6192,75 @@ public:
         }
 
         map<Pos, string> posToNodeName;
+        map<Pos, bool> userProvided;
         int nodeId = 0;
-        for (set<Pos>::const_iterator posIt = allPositions.begin(); posIt != allPositions.end(); ++posIt) {
-            const Pos &pos = *posIt;
-            posToNodeName[pos] = "N" + to_string(nodeId++);
+        for (const auto &pos : allPositions) {
+            auto it = outPosToNodeName.find(pos);
+            if (it != outPosToNodeName.end() && !it->second.empty()) {
+                posToNodeName[pos] = it->second;
+                userProvided[pos] = true;
+            } else {
+                posToNodeName[pos] = "N" + to_string(nodeId++);
+                userProvided[pos] = false;
+            }
         }
 
         map<string, string> parent;
-        for (map<Pos, string>::const_iterator it = posToNodeName.begin(); it != posToNodeName.end(); ++it) {
-            const Pos &pos = it->first;
-            const string &name = it->second;
-            parent[name] = name;
-        }
+        for (const auto &kv : posToNodeName) parent[kv.second] = kv.second;
 
-        auto findParent = [&parent](string u) -> string {
-            while (parent[u] != u) {
-                u = parent[u];
-            }
-            return u;
+        function<string(const string&)> findParent = [&parent](const string &u) -> string {
+            string x = u;
+            while (parent[x] != x) x = parent[x];
+            return x;
+        };
+        auto unionSets = [&parent, &findParent](const string &u, const string &v) {
+            string a = findParent(u), b = findParent(v);
+            if (a != b) parent[a] = b;
         };
 
-        auto unionSets = [&parent, &findParent](string u, string v) {
-            u = findParent(u);
-            v = findParent(v);
-            if (u != v) parent[u] = v;
-        };
-
-        for (vector<PlacedElement>::const_iterator elemIt = placedElements.begin();
-             elemIt != placedElements.end(); ++elemIt) {
-            const PlacedElement &elem = *elemIt;
+        for (const auto &elem : placedElements) {
             if (elem.type == "W") {
-                string n1 = posToNodeName[make_pair(elem.x1, elem.y1)];
-                string n2 = posToNodeName[make_pair(elem.x2, elem.y2)];
+                string n1 = posToNodeName[{elem.x1, elem.y1}];
+                string n2 = posToNodeName[{elem.x2, elem.y2}];
                 unionSets(n1, n2);
             }
         }
 
-        map<string, Node *> rootToNode;
+        map<string, string> rootChosenName; // root -> chosen name
         int uniqueId = 0;
-        for (map<Pos, string>::iterator it = posToNodeName.begin(); it != posToNodeName.end(); ++it) {
-            const Pos &pos = it->first;
-            string &name = it->second;
+        for (const auto &kv : posToNodeName) {
+            const Pos &pos = kv.first;
+            const string &name = kv.second;
             string root = findParent(name);
-            if (rootToNode.find(root) == rootToNode.end()) {
-                string newName = "Node" + to_string(uniqueId++);
-                Node *node = newCircuit->getCreateNode(newName);
-                rootToNode[root] = node;
+            if (rootChosenName.find(root) == rootChosenName.end()) {
+                if (userProvided[pos]) {
+                    rootChosenName[root] = name;
+                } else {
+                    rootChosenName[root] = "";
+                }
+            } else {
+                if (rootChosenName[root].empty() && userProvided[pos]) {
+                    rootChosenName[root] = name;
+                }
+            }
+        }
+        for (auto &kv : rootChosenName) {
+            if (kv.second.empty()) {
+                kv.second = "Node" + to_string(uniqueId++);
             }
         }
 
-        map<Pos, Node *> posToNode;
-        for (map<Pos, string>::const_iterator it = posToNodeName.begin(); it != posToNodeName.end(); ++it) {
-            const Pos &pos = it->first;
-            const string &name = it->second;
+        map<string, Node*> rootToNode;
+        for (auto &kv : rootChosenName) {
+            const string &chosen = kv.second;
+            Node *node = newCircuit->getCreateNode(chosen);
+            rootToNode[kv.first] = node;
+        }
+
+        map<Pos, Node*> posToNode;
+        for (const auto &kv : posToNodeName) {
+            const Pos &pos = kv.first;
+            const string &name = kv.second;
             string root = findParent(name);
             posToNode[pos] = rootToNode[root];
         }
@@ -6209,7 +6274,7 @@ public:
             if (n1 == n2) continue;
 
             double val = elem.customValue;
-            string elName = elem.customName.empty() ? (elem.type + to_string(rand() % 1000)) : elem.customName;
+            string elName = elem.customName.empty() ? (elem.type + to_string(rand() % 1000 + 1000)) : elem.customName;
 
             Element *el = nullptr;
             if (elem.type == "R") {
@@ -6271,16 +6336,18 @@ public:
 
         Node *ground = nullptr;
         if (groundPos.first != -1) {
-            map<Pos, Node *>::iterator it = posToNode.find(groundPos);
-            if (it != posToNode.end()) {
-                ground = it->second;
-            }
+            auto it = posToNode.find(groundPos);
+            if (it != posToNode.end()) ground = it->second;
         }
-        if (ground) ground->setGround();
-        if (ground) newCircuit->gnd = ground;
+        if (ground) {
+            ground->setGround();
+            newCircuit->gnd = ground;
+        }
 
-
-        outPosToNode = posToNode;
+        outPosToNodeName.clear();
+        for (const auto &kv : posToNode) {
+            outPosToNodeName[kv.first] = kv.second->getName();
+        }
 
         return newCircuit;
     }
@@ -6719,8 +6786,14 @@ public:
 
 int main(int argc, char *argv[]) {
 
-    // View view;
-    // view.run();
+    string x;
+    cout<<"Choose your preference!\ncommand-based: 1                      graphical: 2\n";
+    cin>>x;
+    if(x=="1") {
+        View view;
+        view.run();
+        return 0;
+    }
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0 || TTF_Init() != 0) {
         cerr << "SDL/TTF init failed\n";

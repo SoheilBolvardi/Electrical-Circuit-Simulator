@@ -3878,6 +3878,8 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
                                        W, H, SDL_WINDOW_SHOWN);
     SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
 
+    DataCursor cursor;
+
     double xmin = pts.front().first, xmax = xmin,
             ymin = pts.front().second, ymax = ymin;
     for (auto &p: pts) {
@@ -3908,6 +3910,29 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
             quit = true;
         }
 
+        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+            int mx = ev.button.x;
+            int my = ev.button.y;
+
+            int bestD2 = INT_MAX;
+            int bestIdx = 0;
+            for (int i = 0; i < pts.size(); i++) {
+                int px = (int) X(pts[i].first);
+                int py = (int) Y(pts[i].second);
+                int d2 = dist2(mx, my, px, py);
+                if (d2 < bestD2) {
+                    bestD2 = d2;
+                    bestIdx = i;
+                }
+            }
+            cursor.active = true;
+            cursor.xData = pts[bestIdx].first;
+            cursor.yData = pts[bestIdx].second;
+            cursor.xPix = (int) X(cursor.xData);
+            cursor.yPix = (int) Y(cursor.yData);
+        }
+
+
         SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
         SDL_RenderClear(ren);
 
@@ -3929,6 +3954,26 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
         SDL_RenderCopy(ren, texY, nullptr, &dstY);
         SDL_FreeSurface(surfY);
         SDL_DestroyTexture(texY);
+
+        if (cursor.active) {
+            SDL_SetRenderDrawColor(ren, 255, 0, 0, 255);
+            for (int dx = -3; dx <= 3; ++dx) {
+                for (int dy = -3; dy <= 3; ++dy) {
+                    if (dx * dx + dy * dy <= 9) {
+                        SDL_RenderDrawPoint(ren, cursor.xPix + dx, cursor.yPix + dy);
+                    }
+                }
+            }
+            char buf[128];
+            snprintf(buf, sizeof(buf), "x = %.5g   y = %.5g", cursor.xData, cursor.yData);
+
+            SDL_Surface *surf = TTF_RenderUTF8_Blended(font, buf, SDL_Color{0, 0, 0});
+            SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
+            SDL_Rect dst{cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h};
+            SDL_RenderCopy(ren, tex, NULL, &dst);
+            SDL_FreeSurface(surf);
+            SDL_DestroyTexture(tex);
+        }
 
         drawAxisTicks(ren, true, M, W - M, H - M, xmin, xmax, font);
         drawAxisTicks(ren, false, H - M, M, M, ymin, ymax, font);
@@ -4156,6 +4201,8 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption,
                                        W, H, SDL_WINDOW_SHOWN);
     SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
 
+    DataCursor cursor;
+
     double xmin = pts.front().first, xmax = xmin,
             ymin = pts.front().second, ymax = ymin;
     for (auto &p: pts) {
@@ -4183,6 +4230,29 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption,
             ev.window.event == SDL_WINDOWEVENT_CLOSE) {
             quit = true;
         }
+
+        if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+            int mx = ev.button.x;
+            int my = ev.button.y;
+
+            int bestD2 = INT_MAX;
+            int bestIdx = 0;
+            for (int i = 0; i < pts.size(); i++) {
+                int px = (int) X(pts[i].first);
+                int py = (int) Y(pts[i].second);
+                int d2 = dist2(mx, my, px, py);
+                if (d2 < bestD2) {
+                    bestD2 = d2;
+                    bestIdx = i;
+                }
+            }
+            cursor.active = true;
+            cursor.xData = pts[bestIdx].first;
+            cursor.yData = pts[bestIdx].second;
+            cursor.xPix = (int) X(cursor.xData);
+            cursor.yPix = (int) Y(cursor.yData);
+        }
+
 
         SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
         SDL_RenderClear(ren);
@@ -4219,6 +4289,26 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption,
         SDL_RenderCopy(ren, tv, nullptr, &dv);
         SDL_FreeSurface(sv);
         SDL_DestroyTexture(tv);
+
+        if (cursor.active) {
+            SDL_SetRenderDrawColor(ren, 255, 0, 0, 255);
+            for (int dx = -3; dx <= 3; ++dx) {
+                for (int dy = -3; dy <= 3; ++dy) {
+                    if (dx * dx + dy * dy <= 9) {
+                        SDL_RenderDrawPoint(ren, cursor.xPix + dx, cursor.yPix + dy);
+                    }
+                }
+            }
+            char buf[128];
+            snprintf(buf, sizeof(buf), "x = %.5g   y = %.5g", cursor.xData, cursor.yData);
+
+            SDL_Surface *surf = TTF_RenderUTF8_Blended(font, buf, SDL_Color{0, 0, 0});
+            SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
+            SDL_Rect dst{cursor.xPix + 8, cursor.yPix - surf->h / 2, surf->w, surf->h};
+            SDL_RenderCopy(ren, tex, NULL, &dst);
+            SDL_FreeSurface(surf);
+            SDL_DestroyTexture(tex);
+        }
 
         SDL_SetRenderDrawColor(ren, 255, 99, 71, 255);
         for (int i = 1; i < pts.size(); i++)
@@ -5690,7 +5780,7 @@ public:
                 double fixedValue = 0.0;
                 auto data = controller.PhaseSweepData(value, phStart, phStop, (int) phStep,
                                                       kind, target, circuit, fixedValue);
-                plotPH(data, "Phase sweep", kind + "(" + target + ")", fixedValue, kind);
+                plotPHComm(data, "Phase sweep", kind + "(" + target + ")", fixedValue, kind);
             } else if (regex_match(input, match, multipleACSweepPlot)) {
                 double fStart = stod(match[1]);
                 double fStop = stod(match[2]);

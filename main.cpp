@@ -1682,6 +1682,12 @@ public:
     }
 
     void showCircuitDetails(Circuit *circuit) {
+
+        for(auto c: circuit->nodetoindex)
+            cout<<c.first<<"    "<<c.second<<endl;
+        cout<<"HEY\n";
+        for(auto s: circuit->currentIndexmap)
+            cout<<s.first->getName()<<"    "<<s.second<<endl;
         cout << "================= Circuit Details =================\n";
         cout << "\nElements:\n";
 
@@ -3634,7 +3640,6 @@ void plotAC(const vector<pair<double, double>> &pts, const string &caption, stri
     auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
 
     SDL_Event ev;
-    cout << "type any command to quit plot!\n";
     while (!quit) {
         while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
 
@@ -3764,7 +3769,6 @@ void plotACComm(const vector<pair<double, double>> &pts, const string &caption, 
     auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
 
     SDL_Event ev;
-    cout << "type any command to quit plot!\n";
     while (!quit) {
         while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
 
@@ -3895,7 +3899,6 @@ void plotTRAN(const vector<pair<double, double>> &pts, const string &caption, co
     auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
 
     SDL_Event ev;
-    cout << "type any command to quit plot!\n";
 
     while (!quit) {
         while (SDL_PollEvent(&ev))
@@ -3993,7 +3996,6 @@ void plotTRANComm(const vector<pair<double, double>> &pts, const string &caption
     auto Y = [&](double v) { return H - M - (v - ymin) / (ymax - ymin) * (H - 2 * M); };
 
     SDL_Event ev;
-    cout << "type any command to quit plot!\n";
 
     while (!quit) {
         while (SDL_PollEvent(&ev))
@@ -4081,7 +4083,6 @@ void plotPHComm(const vector<pair<double, double>> &pts, const string &caption,
     SDL_Color black{0, 0, 0, 255};
     SDL_Event ev;
 
-    cout << "type any command to quit plot!\n";
 
     while (!quit) {
         while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
@@ -4174,7 +4175,6 @@ void plotPH(const vector<pair<double, double>> &pts, const string &caption,
     SDL_Color black{0, 0, 0, 255};
     SDL_Event ev;
 
-    cout << "type any command to quit plot!\n";
 
     while (!quit) {
         while (SDL_PollEvent(&ev)) if (ev.type == SDL_QUIT) quit = true;
@@ -6487,8 +6487,8 @@ public:
         double stop = stod(inputFields[3].text);
         double points = stod(inputFields[4].text);
 
-        outputType = (inputFields[5].text.rfind("V(", 0) == 0) ? "Voltage" : "Current";
-        outputNode = inputFields[5].text;
+        outputType = (inputFields[5].text.rfind("V(", 0) == 0) ? "V" : "I";
+        outputNode = inputFields[5].text.substr(2, inputFields[5].text.size()-3);
         double fixedValue = 0;
 
         auto pts = controller_.PhaseSweepData(frequency, start, stop, points, outputType, outputNode, circuit, fixedValue);
@@ -6667,8 +6667,8 @@ public:
         double tend   = stod(inputFields[1].text);
         double tstep  = stod(inputFields[2].text);
 
-        outputType = (inputFields[3].text.rfind("V(", 0) == 0) ? "Voltage" : "Current";
-        outputNode = inputFields[3].text;
+        outputType = (inputFields[3].text.rfind("V(", 0) == 0) ? "V" : "I";
+        outputNode = inputFields[3].text.substr(2, inputFields[3].text.size()-3);
 
         double points = (tend - tstart) / tstep;
 
@@ -8016,7 +8016,7 @@ int main(int argc, char *argv[]) {
 
     string x;
     cout << "Choose your preference!\ncommand-based: 1                      graphical: 2\n";
-    cin >> x;
+    getline(cin,x);
     if (x == "1") {
         View view;
         view.run();

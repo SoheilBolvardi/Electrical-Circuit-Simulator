@@ -24,11 +24,6 @@ The simulator supports:
   * Capacitor
   * Inductor
 
-* **Diodes**
-
-  * Diode
-  * Zener diode
-
 * **Independent voltage sources**
 
   * DC
